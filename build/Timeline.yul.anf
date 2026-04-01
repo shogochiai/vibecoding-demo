@@ -1,0 +1,37 @@
+{__mainExpression:0} = []: %let v0 = (<{{__mainExpression:0}:0} underapp 1>()) in (PrimIO.unsafePerformIO(v0))
+{{__mainExpression:0}:0} = [0]: Timeline.main(v0)
+_builtin.NIL = Constructor tag Just 0 arity 0 newtype by Nothing
+_builtin.CONS = Constructor tag Just 1 arity 2 newtype by Nothing
+_builtin.NOTHING = Constructor tag Just 0 arity 0 newtype by Nothing
+_builtin.JUST = Constructor tag Just 1 arity 1 newtype by Nothing
+prim__sub_Integer = [0, 1]: %op -Integer(v0, v1)
+Timeline.main = [0]: Timeline.dispatch(v0)
+Timeline.loadEventTimestamp = [0, 1]: %let v2 = (TimelineStorage.eventSlot(v0, v1)) in (<Timeline.{loadEventTimestamp:0} underapp 1>(v2))
+Timeline.{loadEventTimestamp:0} = [0, 1]: EVM.Primitives.sload(v0, v1)
+Timeline.getProposalTimeline = [0]: %let v1 = (%let v2 = (4) in (EVM.Primitives.calldataload(v2, v0))) in (%let v3 = (Timeline.buildTimeline(v1, v0)) in (Timeline.encodeTimeline(v3, v0)))
+Timeline.encodeTimeline = [0, 1]: %let v2 = (%let v10 = (0) in (%let v11 = (%let v9 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v3, v4, v5, v6) => %case v3 of { %conalt _builtin.CONS(v7, v8) => v7 Nothing } Nothing }) in (TimelineStorage.eventIndex(v9))) in (EVM.Primitives.mstore(v10, v11, v1)))) in (%let v12 = (%let v19 = (32) in (%let v20 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v13, v14, v15, v16) => %case v13 of { %conalt _builtin.CONS(v17, v18) => v18 Nothing } Nothing }) in (EVM.Primitives.mstore(v19, v20, v1)))) in (%let v21 = (%let v29 = (64) in (%let v30 = (%let v28 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v22, v23, v24, v25) => %case v23 of { %conalt _builtin.CONS(v26, v27) => v26 Nothing } Nothing }) in (TimelineStorage.eventIndex(v28))) in (EVM.Primitives.mstore(v29, v30, v1)))) in (%let v31 = (%let v38 = (96) in (%let v39 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v32, v33, v34, v35) => %case v33 of { %conalt _builtin.CONS(v36, v37) => v37 Nothing } Nothing }) in (EVM.Primitives.mstore(v38, v39, v1)))) in (%let v40 = (%let v48 = (128) in (%let v49 = (%let v47 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v41, v42, v43, v44) => %case v43 of { %conalt _builtin.CONS(v45, v46) => v45 Nothing } Nothing }) in (TimelineStorage.eventIndex(v47))) in (EVM.Primitives.mstore(v48, v49, v1)))) in (%let v50 = (%let v57 = (160) in (%let v58 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v51, v52, v53, v54) => %case v53 of { %conalt _builtin.CONS(v55, v56) => v56 Nothing } Nothing }) in (EVM.Primitives.mstore(v57, v58, v1)))) in (%let v59 = (%let v67 = (192) in (%let v68 = (%let v66 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v60, v61, v62, v63) => %case v63 of { %conalt _builtin.CONS(v64, v65) => v64 Nothing } Nothing }) in (TimelineStorage.eventIndex(v66))) in (EVM.Primitives.mstore(v67, v68, v1)))) in (%let v69 = (%let v76 = (224) in (%let v77 = (%case v0 of { %conalt Timeline.MkProposalTimeline(v70, v71, v72, v73) => %case v73 of { %conalt _builtin.CONS(v74, v75) => v75 Nothing } Nothing }) in (EVM.Primitives.mstore(v76, v77, v1)))) in (%let v78 = (0) in (%let v79 = (256) in (EVM.Primitives.evmReturn(v78, v79, v1)))))))))))
+Timeline.dispatch = [0]: %let v1 = (EVM.Primitives.getSelector(v0)) in (%let v5 = (%let v2 = (3013650640) in (Prelude.EqOrd.==(v1, v2))) in (%case v5 of { %constalt(1) => Timeline.getProposalTimeline(v0)| %constalt(0) => %let v3 = (0) in (%let v4 = (0) in (EVM.Primitives.evmRevert(v3, v4, v0))) Nothing }))
+Timeline.buildTimeline = [0, 1]: %let v2 = (%let v4 = (%let v3 = (0) in (Timeline.loadEventTimestamp(v0, v3))) in (v4 @ (v1))) in (%let v5 = (%let v7 = (%let v6 = (1) in (Timeline.loadEventTimestamp(v0, v6))) in (v7 @ (v1))) in (%let v8 = (%let v10 = (%let v9 = (2) in (Timeline.loadEventTimestamp(v0, v9))) in (v10 @ (v1))) in (%let v11 = (%let v13 = (%let v12 = (3) in (Timeline.loadEventTimestamp(v0, v12))) in (v13 @ (v1))) in (%let v18 = (%let v14 = (0) in (%con _builtin.CONS(v14, v2))) in (%let v19 = (%let v15 = (1) in (%con _builtin.CONS(v15, v5))) in (%let v20 = (%let v16 = (2) in (%con _builtin.CONS(v16, v8))) in (%let v21 = (%let v17 = (3) in (%con _builtin.CONS(v17, v11))) in (%con Timeline.MkProposalTimeline(v18, v19, v20, v21)))))))))
+Timeline.MkProposalTimeline = Constructor tag Just 0 arity 4 newtype by Nothing
+EVM.Primitives.sload = [0, 1]: EVM.Primitives.prim__sload(v0, v1)
+EVM.Primitives.prim__sload = Foreign call ["evm:sload"] [Integer, %World] -> IORes Integer
+EVM.Primitives.prim__revert = Foreign call ["evm:revert"] [Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__return = Foreign call ["evm:return"] [Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__mstore = Foreign call ["evm:mstore"] [Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__calldataload = Foreign call ["evm:calldataload"] [Integer, %World] -> IORes Integer
+EVM.Primitives.mstore = [0, 1, 2]: EVM.Primitives.prim__mstore(v0, v1, v2)
+EVM.Primitives.getSelector = [0]: %let v1 = (%let v2 = (0) in (EVM.Primitives.calldataload(v2, v0))) in (%let v3 = (26959946667150639794667015087019630673637144422540572481103610249216) in (Prelude.Num.div(v1, v3)))
+EVM.Primitives.evmRevert = [0, 1, 2]: EVM.Primitives.prim__revert(v0, v1, v2)
+EVM.Primitives.evmReturn = [0, 1, 2]: EVM.Primitives.prim__return(v0, v1, v2)
+EVM.Primitives.calldataload = [0, 1]: EVM.Primitives.prim__calldataload(v0, v1)
+Prelude.Types.prim__integerToNat = [0]: %let v2 = (%let v1 = (0) in (%op <=Integer(v1, v0))) in (%case v2 of { %constalt(0) => 0 Just v0 })
+Prelude.Num.div = [0, 1]: %let v4 = (%let v2 = (0) in (Prelude.EqOrd.==(v1, v2))) in (%case v4 of { %constalt(0) => %op /Integer(v0, v1) Just %let v3 = ("Unhandled input for Prelude.Num.case block in div at Prelude.Num:91:3--93:44") in (%op crash([__], v3)) })
+Prelude.EqOrd.compare = [0, 1]: %let v3 = (Prelude.EqOrd.<(v0, v1)) in (%case v3 of { %constalt(1) => 0| %constalt(0) => %let v2 = (Prelude.EqOrd.==(v0, v1)) in (%case v2 of { %constalt(1) => 1| %constalt(0) => 2 Nothing }) Nothing })
+Prelude.EqOrd.== = [0, 1]: %let v2 = (%op ==Integer(v0, v1)) in (%case v2 of { %constalt(0) => 0 Just 1 })
+Prelude.EqOrd.< = [0, 1]: %let v2 = (%op <Integer(v0, v1)) in (%case v2 of { %constalt(0) => 0 Just 1 })
+Prelude.EqOrd.compareInteger = [0, 1]: Prelude.EqOrd.compare(v0, v1)
+PrimIO.unsafePerformIO = [0]: %let v1 = (<PrimIO.{unsafePerformIO:0} underapp 1>(v0)) in (PrimIO.unsafeCreateWorld(v1))
+PrimIO.{unsafePerformIO:0} = [0, 1]: v0 @ (v1)
+PrimIO.unsafeCreateWorld = [0]: %let v1 = (%MkWorld) in (v0 @ (v1))
+TimelineStorage.eventSlot = [0, 1]: %let v5 = (%let v3 = (%let v2 = (4) in (%op *Integer(v0, v2))) in (%let v4 = (62514009886607029107290561805838585334079798074568712924583230797734656856475) in (%op +Integer(v3, v4)))) in (%let v6 = (TimelineStorage.eventIndex(v1)) in (%op +Integer(v5, v6)))
+TimelineStorage.eventIndex = [0]: %case v0 of { %constalt(0) => 0| %constalt(1) => 1| %constalt(2) => 2| %constalt(3) => 3 Nothing }
