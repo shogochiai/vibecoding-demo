@@ -193,12 +193,3 @@ cancelProposalEntry = MkEntry cancelProposalSel $ do
   case result of
     Ok success => returnBool success
     Fail _ _ => evmRevert 0 0
-
--- =============================================================================
--- Yul Codegen Entry
--- =============================================================================
-
-main : IO ()
-main = dispatch
-  [ entry {sig = cancelProposalSig} cancelProposalEntry
-  ]
