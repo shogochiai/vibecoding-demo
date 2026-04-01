@@ -1,0 +1,99 @@
+```toml
+version = "1.0"
+id = "theworld-ip-28"
+title = "Emergency Pause — DAO全操作の一時停止機能"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_PAUSE_001: Guardian（マルチシグ or DAO）がpause()を呼び出し、全操作を一時停止できる
+# REQ_PAUSE_002: pause中は状態変更を伴う全selector呼び出しがrevertする
+# REQ_PAUSE_003: unpause()でDAO投票により再開できる
+# REQ_PAUSE_004: pause状態はProxy storageで管理し、Implementation側は状態を持たない
+# REQ_PAUSE_005: pause/unpauseイベントをemitし、オフチェーン監視が検知可能
+
+[root]
+id = "ip28-root"
+name = "Emergency Pause機能の実装・デプロイ・検証"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip28-1"
+name = "REQ_PAUSE_001 — PauseGuard Idris2モジュール実装 (Yul codegen)"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Pause.idr が成功し Yul出力が生成される",
+  "生成Yulに pause() / unpause() / paused() の3関数セレクタが含まれる: grep -c 'case 0x' build/Pause.yul",
+  "solc --strict-assembly build/Pause.yul が正常にバイトコードを出力する",
+]
+
+[[root.subtasks]]
+id = "ip28-2"
+name = "REQ_PAUSE_002 — ERC-7546 Proxy pause gatekeeperフック実装"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "Proxy の getImplementation(bytes4) が paused==true 時に非view selectorへ revert を返すことをYulレベルで確認: grep 'revert' build/ProxyPause.yul",
+  "paused==false 時は通常の delegatecall ルーティングが維持される",
+  "pause状態がProxy storage slot (keccak256('td.pause.active')) に格納される: grep 'td.pause.active' src/ProxyPause.idr",
+]
+
+[[root.subtasks]]
+id = "ip28-3"
+name = "REQ_PAUSE_003 — unpause DAO投票ガード実装"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "unpause() が msg.sender==DAO_ADDRESS チェックを含む: grep 'caller' build/Pause.yul",
+  "pause() は guardian (マルチシグ) から呼び出し可能であることがYulで確認できる",
+  "不正callerからの unpause 呼び出しが revert することをテストで確認",
+]
+
+[[root.subtasks]]
+id = "ip28-4"
+name = "REQ_PAUSE_005 — Pause/Unpause イベント emit 実装"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "Yul出力に Paused(address) と Unpaused(address) の event topic hash が含まれる: grep 'log' build/Pause.yul",
+  "event signature が keccak256 と一致する",
+  "solc コンパイルが成功する: solc --strict-assembly build/Pause.yul --bin",
+]
+
+[[root.subtasks]]
+id = "ip28-5"
+name = "REQ_PAUSE_004 — Base Mainnet デプロイ (t-ECDSA経由)"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "TheWorld canister 経由で t-ECDSA 署名付きtxが Base Mainnet に送信される",
+  "デプロイされた Proxy contract の paused() が false を返す: cast call $PROXY_ADDR 'paused()(bool)' --rpc-url $BASE_RPC",
+  "getImplementation(bytes4) が pause selector に対して正しい implementation address を返す: cast call $PROXY_ADDR 'getImplementation(bytes4)(address)' 0x8456cb59 --rpc-url $BASE_RPC",
+]
+
+[[root.subtasks]]
+id = "ip28-6"
+name = "REQ_PAUSE_001-005 — IcWasm.Verification によるバイトコード検証"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "IcWasm.Verification の Artifact EVM と Deployed EVM のバイトコード一致が verify で確認される",
+  "pause() → paused()==true → unpause() → paused()==false のE2Eフローが Base上で成功",
+  "全REQ項目がカバーされたことを etherclaw status で確認",
+]
+
+[[codebase_ref]]
+path = "idris2-evm/src/EVM/Yul/Codegen.idr"
+comment = "Yul codegen パターン参照 — selector dispatch, storage read/write"
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/ERC7546/Proxy.idr"
+comment = "ERC-7546 Proxy パターン — getImplementation(bytes4), delegatecall routing"
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/ERC7546/Storage.idr"
+comment = "Proxy storage slot 命名規則 — keccak256 named slot pattern"
+```

@@ -1,0 +1,83 @@
+```toml
+# SPEC:
+# REQ_CANCEL_001 — cancelProposal entry point: author-only guard + state transition
+# REQ_CANCEL_002 — Cancelled state: exclude from tally, free voting slot
+# REQ_CANCEL_003 — ERC-7546 clone integration: new function selector routing
+# REQ_CANCEL_004 — On-chain verification via IcWasm.Verification
+
+version = "1.0"
+id = "theworld-ip-37"
+title = "Add cancelProposal to td"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+[root]
+id = "cancel-proposal"
+name = "Implement cancelProposal for td governance"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "cancel-logic"
+name = "REQ_CANCEL_001 — cancelProposal Yul codegen via idris2-evm"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal function compiles to Yul", verify = "idris2-yul --codegen yul src/Governance/Cancel.idr && test -f build/Cancel.yul" },
+  { description = "Author-only guard rejects non-author caller", verify = "grep -q 'caller.*eq.*author' build/Cancel.yul" },
+  { description = "State transitions proposal to Cancelled status", verify = "grep -q 'Cancelled' src/Governance/Cancel.idr" },
+]
+
+[[root.subtasks]]
+id = "tally-exclusion"
+name = "REQ_CANCEL_002 — Exclude cancelled proposals from tally and free voting slot"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Tally logic skips proposals with Cancelled state", verify = "grep -q 'Cancelled.*skip\\|filterCancelled' src/Governance/Tally.idr" },
+  { description = "Voting slot freed on cancel", verify = "grep -q 'freeSlot\\|decrementActive' src/Governance/Cancel.idr" },
+]
+
+[[root.subtasks]]
+id = "erc7546-routing"
+name = "REQ_CANCEL_003 — ERC-7546 proxy selector routing for cancelProposal"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal selector registered in proxy getImplementation(bytes4)", verify = "grep -q 'cancelProposal' src/Proxy/Selectors.idr" },
+  { description = "Selector uses 0xdc9cc645 pattern for routing", verify = "grep -q 'dc9cc645\\|getImplementation' src/Proxy/Selectors.idr" },
+]
+
+[[root.subtasks]]
+id = "compile-deploy"
+name = "REQ_CANCEL_003 — Compile Yul to bytecode and deploy via t-ECDSA"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "solc strict-assembly produces valid bytecode", verify = "solc --strict-assembly build/Cancel.yul --bin && test $? -eq 0" },
+  { description = "Deploy script targets Base Mainnet via TheWorld t-ECDSA", verify = "grep -q 'base.*mainnet\\|theworld.*sign' scripts/deploy-cancel.sh" },
+]
+
+[[root.subtasks]]
+id = "verification"
+name = "REQ_CANCEL_004 — On-chain verification via IcWasm.Verification"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Artifact EVM bytecode matches deployed bytecode", verify = "idris2 --exec verifyCancel test/Verify/CancelVerify.idr" },
+  { description = "IcWasm.Verification confirm returns true", verify = "grep -q 'Artifact.*EVM.*verify' test/Verify/CancelVerify.idr" },
+]
+
+[[codebase_ref]]
+path = "src/Governance/Proposal.idr"
+comment = "Existing proposal states and submit logic — extend with Cancelled state"
+
+[[codebase_ref]]
+path = "src/Proxy/Selectors.idr"
+comment = "ERC-7546 selector registry — add cancelProposal routing"
+
+[[codebase_ref]]
+path = "src/Governance/Tally.idr"
+comment = "Tally logic — must filter Cancelled proposals"
+```

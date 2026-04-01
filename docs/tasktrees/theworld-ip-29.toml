@@ -1,0 +1,85 @@
+```toml
+# SPEC:
+# REQ_CANCEL_001 — cancelProposal function selector and Yul implementation
+# REQ_CANCEL_002 — Author-only access control (msg.sender == proposal.author)
+# REQ_CANCEL_003 — State transition: Active/Pending → Cancelled (exclude from tally)
+# REQ_CANCEL_004 — ERC-7546 function module registration (proxy routing)
+# REQ_CANCEL_005 — On-chain verification via IcWasm.Verification
+
+version = "1.0"
+id = "theworld-ip-29"
+title = "Add cancelProposal to td governance"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+[root]
+id = "cancel-proposal"
+name = "Implement cancelProposal for td governance"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "cancel-yul-impl"
+name = "REQ_CANCEL_001 — cancelProposal Yul codegen via idris2-evm"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal function compiles to Yul", verify = "cat build/CancelProposal.yul | grep 'function cancelProposal'" },
+  { description = "Yul assembles to bytecode via solc", verify = "solc --strict-assembly build/CancelProposal.yul --bin 2>&1 | grep 'Binary representation'" },
+  { description = "Function selector matches keccak256('cancelProposal(uint256)')", verify = "cast sig 'cancelProposal(uint256)'" },
+]
+
+[[root.subtasks]]
+id = "cancel-access-control"
+name = "REQ_CANCEL_002 — Author-only access control guard"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Revert when caller is not proposal author", verify = "idris2-yul --codegen yul src/Governance/Cancel.idr && grep 'revert' build/CancelProposal.yul" },
+  { description = "Unit test passes for author-only check", verify = "pack test cancel-access" },
+]
+
+[[root.subtasks]]
+id = "cancel-state-transition"
+name = "REQ_CANCEL_003 — State transition Active/Pending → Cancelled"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Cancelled state enum value defined in storage layout", verify = "grep -r 'Cancelled' src/Governance/ProposalState.idr" },
+  { description = "Cancelled proposals excluded from tally loop", verify = "grep -r 'Cancelled' src/Governance/Tally.idr | grep -i 'skip\\|exclude\\|filter'" },
+  { description = "State transition test passes", verify = "pack test cancel-state" },
+]
+
+[[root.subtasks]]
+id = "cancel-erc7546-register"
+name = "REQ_CANCEL_004 — Register cancelProposal in ERC-7546 proxy"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Function module registered with proxy selector routing", verify = "grep 'cancelProposal' src/Governance/Modules.idr" },
+  { description = "Proxy getImplementation(bytes4) resolves cancelProposal selector", verify = "cast call $PROXY_ADDR 'getImplementation(bytes4)' $(cast sig 'cancelProposal(uint256)') --rpc-url $BASE_RPC" },
+]
+
+[[root.subtasks]]
+id = "cancel-deploy-verify"
+name = "REQ_CANCEL_005 — Deploy via t-ECDSA and verify on-chain"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Module deployed to Base Mainnet via TheWorld t-ECDSA", verify = "etherclaw tx-status --module cancel-proposal --network base" },
+  { description = "Artifact verification passes", verify = "pack run verify-artifact -- --module CancelProposal --network base" },
+]
+
+[[codebase_ref]]
+path = "src/Governance/Propose.idr"
+comment = "Existing proposal creation — mirror storage layout and state enum for cancel"
+
+[[codebase_ref]]
+path = "src/Governance/Modules.idr"
+comment = "ERC-7546 function module registry — add cancelProposal selector here"
+
+[[codebase_ref]]
+path = "src/Governance/ProposalState.idr"
+comment = "Proposal state enum — add Cancelled variant"
+```

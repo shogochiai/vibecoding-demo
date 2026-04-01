@@ -1,0 +1,99 @@
+```toml
+version = "1.0"
+id = "theworld-ip-27"
+title = "Shareholder 投票権委任機能 (Vote Delegation)"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_DELEG_001: Shareholder は任意のアドレスに投票権を委任できる
+# REQ_DELEG_002: 委任は 1:1 (一人の delegatee のみ)、再委任は不可
+# REQ_DELEG_003: 委任状態はオンチェーンで参照可能 (delegateOf, votingPowerOf)
+# REQ_DELEG_004: 委任は delegator 本人がいつでも解除できる
+# REQ_DELEG_005: Voting モジュールが delegated voting power を正しく集計する
+
+[root]
+id = "ip27-root"
+name = "Vote Delegation — ERC-7546 module implementation"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip27-01"
+name = "REQ_DELEG_001: Delegation storage layout & proxy function table entry"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Delegation.idr produces valid Yul: solc --strict-assembly --bin Delegation.yul exits 0",
+  "grep -q 'dc9cc645' Delegation.yul  # getImplementation selector present in proxy routing",
+  "grep -q 'delegate(address)' src/Delegation.idr  # delegate function defined"
+]
+
+[[root.subtasks]]
+id = "ip27-02"
+name = "REQ_DELEG_002: Enforce 1:1 delegation & block re-delegation"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -q 'revert.*already.delegated\\|ALREADY_DELEGATED' src/Delegation.idr  # re-delegation guard exists",
+  "idris2-yul --typecheck src/Delegation.idr exits 0  # type-level 1:1 constraint compiles",
+  "grep -q 'NoDelegationChain\\|noReDelegate' src/Delegation.idr  # chain delegation blocked"
+]
+
+[[root.subtasks]]
+id = "ip27-03"
+name = "REQ_DELEG_003: Read functions — delegateOf & votingPowerOf"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -q 'delegateOf(address)' src/Delegation.idr  # view function defined",
+  "grep -q 'votingPowerOf(address)' src/Delegation.idr  # aggregated power query defined",
+  "solc --strict-assembly --bin Delegation.yul | grep -q '^[0-9a-f]'  # bytecode generated"
+]
+
+[[root.subtasks]]
+id = "ip27-04"
+name = "REQ_DELEG_004: Revoke delegation by delegator"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -q 'revoke\\|undelegate' src/Delegation.idr  # revoke function exists",
+  "grep -q 'caller.*eq.*delegator\\|onlyDelegator' src/Delegation.idr  # auth check on revoke",
+  "idris2-yul --codegen yul src/Delegation.idr && solc --strict-assembly Delegation.yul exits 0"
+]
+
+[[root.subtasks]]
+id = "ip27-05"
+name = "REQ_DELEG_005: Integrate delegation into Voting module power calculation"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -q 'delegatedPower\\|votingPowerOf' src/Voting.idr  # Voting reads delegation state",
+  "idris2-yul --typecheck src/Voting.idr exits 0  # integrated module compiles",
+  "solc --strict-assembly --bin Voting.yul | grep -q '^[0-9a-f]'  # full bytecode with delegation"
+]
+
+[[root.subtasks]]
+id = "ip27-06"
+name = "Deploy delegation module to Base Mainnet via t-ECDSA & verify"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "etherclaw deploy --module Delegation --network base-mainnet exits 0  # t-ECDSA signed deploy",
+  "etherclaw verify --module Delegation --network base-mainnet exits 0  # IcWasm.Verification passes",
+  "cast call $PROXY_ADDR 'getImplementation(bytes4)' 0x$(cast sig 'delegate(address)') --rpc-url $BASE_RPC | grep -qi '0x'  # selector routed"
+]
+
+[[codebase_ref]]
+path = "src/Voting.idr"
+comment = "Existing voting module — integration point for delegated power"
+
+[[codebase_ref]]
+path = "src/Proxy.idr"
+comment = "ERC-7546 proxy — function table where delegation selector will be registered"
+
+[[codebase_ref]]
+path = "lib/idris2-subcontract/src/ERC7546.idr"
+comment = "ERC-7546 types and getImplementation pattern"
+```

@@ -1,0 +1,99 @@
+```toml
+version = "1.0"
+id = "theworld-ip-30"
+title = "Governance Event Timeline Read-Only Function"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_TIMELINE_001: propose イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_002: vote イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_003: tally イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_004: execute イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_005: 全イベントを時系列順で一括取得する read-only 関数
+
+[root]
+id = "ip30-root"
+name = "Governance Event Timeline Query Function"
+estimate = { hours = 14 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip30-01"
+name = "REQ_TIMELINE_001 — Define EventTimeline storage layout and event struct in Idris2"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul compiles EventTimeline module without errors",
+  "Yul output contains storage slot definitions for propose/vote/tally/execute timestamps",
+  "grep -q 'EventTimeline' src/Governance/EventTimeline.idr"
+]
+
+[[root.subtasks]]
+id = "ip30-02"
+name = "REQ_TIMELINE_002 — Implement timestamp recording hooks for propose/vote/tally/execute"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "Each governance action (propose, vote, tally, execute) writes block.timestamp to storage",
+  "idris2-yul --codegen yul produces Yul with sstore calls for each event type",
+  "grep -c 'timestamp' yul-out/EventTimeline.yul | xargs test 4 -le"
+]
+
+[[root.subtasks]]
+id = "ip30-03"
+name = "REQ_TIMELINE_005 — Implement getEventTimeline(uint256) read-only Yul function"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "Function selector matches staticcall-safe signature getEventTimeline(uint256)",
+  "solc --strict-assembly --bin yul-out/EventTimeline.yul produces valid bytecode",
+  "Yul output contains no sstore instructions inside getEventTimeline path"
+]
+
+[[root.subtasks]]
+id = "ip30-04"
+name = "REQ_TIMELINE_003 — Register function in ERC-7546 proxy via getImplementation(bytes4)"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "Proxy maps getEventTimeline selector to implementation address via 0xdc9cc645",
+  "grep -q 'dc9cc645' src/Governance/ProxyConfig.idr",
+  "Implementation contract contains no storage writes (pure logic)"
+]
+
+[[root.subtasks]]
+id = "ip30-05"
+name = "REQ_TIMELINE_004 — Deploy to Base Mainnet via t-ECDSA and verify"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "etherclaw deploy --network base-mainnet exits 0",
+  "IcWasm.Verification confirms Artifact EVM matches Deployed EVM bytecode",
+  "cast call <deployed_addr> 'getEventTimeline(uint256)' 1 --rpc-url $BASE_RPC returns encoded timestamps"
+]
+
+[[root.subtasks]]
+id = "ip30-06"
+name = "Integration test — end-to-end timeline query returns all 4 event timestamps"
+estimate = { hours = 1 }
+checkbox = "unchecked"
+acceptance = [
+  "Test creates proposal, votes, tallies, executes, then queries timeline",
+  "Returned tuple contains 4 non-zero uint256 timestamps in ascending order",
+  "idris2-yul test EventTimeline.Test exits 0"
+]
+
+[[codebase_ref]]
+path = "src/Governance"
+comment = "Existing governance module — check current event emission and storage patterns"
+
+[[codebase_ref]]
+path = "lib/idris2-subcontract/src/ERC7546"
+comment = "ERC-7546 Upgradeable Clone types and proxy pattern reference"
+
+[[codebase_ref]]
+path = "lib/idris2-evm/src/Yul"
+comment = "Yul codegen primitives — storage access, ABI encoding for return values"
+```

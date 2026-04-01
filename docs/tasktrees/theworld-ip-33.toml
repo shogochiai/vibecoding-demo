@@ -1,0 +1,94 @@
+```toml
+# SPEC:
+# REQ_CANCEL_001 — cancelProposal selector: author can cancel own proposal before voting ends
+# REQ_CANCEL_002 — State transition: proposal moves to Cancelled state, excluded from tally
+# REQ_CANCEL_003 — Access control: only original author can cancel; revert otherwise
+# REQ_CANCEL_004 — Event emission: ProposalCancelled(uint256 proposalId) logged on cancel
+# REQ_CANCEL_005 — Proxy integration: register cancelProposal selector in ERC-7546 proxy
+
+version = "1.0"
+id = "theworld-ip-33"
+title = "Add cancelProposal to td governance"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+[[codebase_ref]]
+path = "src/Governance/Proposal.idr"
+comment = "Existing proposal state machine and submitProposal implementation"
+
+[[codebase_ref]]
+path = "src/Governance/Types.idr"
+comment = "ProposalState enum and governance storage layout"
+
+[[codebase_ref]]
+path = "src/Proxy/Selectors.idr"
+comment = "ERC-7546 selector registration for proxy routing"
+
+[root]
+id = "ip33-cancel-proposal"
+name = "Add cancelProposal to td governance"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip33-01-state-type"
+name = "REQ_CANCEL_002 — Add Cancelled state to ProposalState enum"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Cancelled constructor exists in ProposalState", verify = "grep -q 'Cancelled' src/Governance/Types.idr" },
+  { description = "Existing states unchanged — build succeeds", verify = "idris2-yul --check src/Governance/Types.idr" },
+]
+
+[[root.subtasks]]
+id = "ip33-02-cancel-logic"
+name = "REQ_CANCEL_001 REQ_CANCEL_003 — Implement cancelProposal with author-only guard"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal function compiles to Yul", verify = "idris2-yul --codegen yul src/Governance/Proposal.idr && test -f build/CancelProposal.yul" },
+  { description = "Revert on non-author caller verified in unit test", verify = "idris2-yul --test src/Governance/Test/CancelProposal.idr" },
+  { description = "Revert if voting already ended verified in unit test", verify = "grep -q 'testCancelAfterVotingEnds' src/Governance/Test/CancelProposal.idr" },
+]
+
+[[root.subtasks]]
+id = "ip33-03-event-emission"
+name = "REQ_CANCEL_004 — Emit ProposalCancelled event on cancel"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "ProposalCancelled event topic in generated Yul", verify = "grep -q 'ProposalCancelled' build/CancelProposal.yul" },
+  { description = "Event includes proposalId as indexed param", verify = "idris2-yul --test src/Governance/Test/CancelEvent.idr" },
+]
+
+[[root.subtasks]]
+id = "ip33-04-proxy-selector"
+name = "REQ_CANCEL_005 — Register cancelProposal in ERC-7546 proxy"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal(uint256) selector registered", verify = "grep -q 'cancelProposal' src/Proxy/Selectors.idr" },
+  { description = "Proxy routes selector to governance implementation", verify = "idris2-yul --test src/Proxy/Test/SelectorRouting.idr" },
+]
+
+[[root.subtasks]]
+id = "ip33-05-compile-deploy"
+name = "REQ_CANCEL_001 — Compile via solc strict-assembly and deploy to Base Mainnet"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "solc strict-assembly produces valid bytecode", verify = "solc --strict-assembly build/CancelProposal.yul --bin | head -1 | grep -qE '^[0-9a-f]+$'" },
+  { description = "Deployment tx confirmed on Base Mainnet", verify = "etherclaw verify --artifact build/CancelProposal.bin --network base" },
+]
+
+[[root.subtasks]]
+id = "ip33-06-tally-exclusion"
+name = "REQ_CANCEL_002 — Exclude cancelled proposals from tally aggregation"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Tally skips Cancelled proposals", verify = "idris2-yul --test src/Governance/Test/TallyExclusion.idr" },
+  { description = "Cancelled proposal not in active proposal list query", verify = "idris2-yul --test src/Governance/Test/ActiveList.idr" },
+]
+```

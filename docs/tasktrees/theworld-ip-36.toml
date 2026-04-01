@@ -1,0 +1,94 @@
+```toml
+version = "1.0"
+id = "theworld-ip-36"
+title = "Emergency Pause — DAO全操作の緊急停止メカニズム"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_PAUSE_001: Auditor 3人以上の合意でDAO全操作を一時停止できる
+# REQ_PAUSE_002: 停止中は全てのstate-changing操作がrevertする
+# REQ_PAUSE_003: 解除にはShareholder過半数の投票が必要
+# REQ_PAUSE_004: 停止/解除イベントをon-chainで記録する
+# REQ_PAUSE_005: ERC-7546 Proxy経由で既存facetに停止チェックを注入する
+
+[root]
+id = "ip36-root"
+name = "Emergency Pause Mechanism"
+estimate = { hours = 28 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip36-01"
+name = "REQ_PAUSE_001 — Auditor多重署名による停止トリガー"
+estimate = { hours = 6 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Pause/Trigger.idr が正常にYul出力を生成する",
+  "solc --strict-assembly output/Trigger.yul がバイトコード生成に成功する",
+  "Yul出力にsload/sstore経由のauditor署名カウントロジックが含まれる"
+]
+
+[[root.subtasks]]
+id = "ip36-02"
+name = "REQ_PAUSE_002 — PauseGuard facet実装（全操作のrevertゲート）"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Pause/Guard.idr が正常にYul出力を生成する",
+  "Yul出力にpaused状態チェックとrevertロジックが含まれる",
+  "solc --strict-assembly output/Guard.yul がバイトコード生成に成功する"
+]
+
+[[root.subtasks]]
+id = "ip36-03"
+name = "REQ_PAUSE_003 — Shareholder投票による停止解除"
+estimate = { hours = 6 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Pause/Unpause.idr が正常にYul出力を生成する",
+  "Yul出力にshareholder投票カウントと過半数判定ロジックが含まれる",
+  "solc --strict-assembly output/Unpause.yul がバイトコード生成に成功する"
+]
+
+[[root.subtasks]]
+id = "ip36-04"
+name = "REQ_PAUSE_004 — イベントログ（Paused/Unpaused emit）"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "Trigger.yul にlog1/log2命令でPausedイベントが含まれる",
+  "Unpause.yul にlog1/log2命令でUnpausedイベントが含まれる"
+]
+
+[[root.subtasks]]
+id = "ip36-05"
+name = "REQ_PAUSE_005 — ERC-7546 Proxy統合とデプロイ"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  "getImplementation(bytes4)セレクタ0xdc9cc645経由でPauseGuard facetが解決される",
+  "t-ECDSA署名によるBase Mainnetデプロイスクリプトが存在する",
+  "IcWasm.Verification でArtifact EVMとDeployed EVMのバイトコード一致を確認できる"
+]
+
+[[root.subtasks]]
+id = "ip36-06"
+name = "結合テスト — 停止→操作revert→投票→解除の全フロー検証"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "テストスクリプトでauditor 3署名後にpaused状態がtrueになる",
+  "paused状態で任意のstate-changing callがrevertする",
+  "shareholder過半数投票後にpaused状態がfalseに戻る"
+]
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/ERC7546"
+comment = "ERC-7546 Upgradeable Clone型定義とProxy ABIパターン"
+
+[[codebase_ref]]
+path = "idris2-evm/src/Yul"
+comment = "Yul codegen基盤 — sload/sstore/log/revert プリミティブ"
+```

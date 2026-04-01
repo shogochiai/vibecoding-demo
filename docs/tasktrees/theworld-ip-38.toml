@@ -1,0 +1,94 @@
+```toml
+version = "1.0"
+id = "theworld-ip-38"
+title = "Governance event timeline read-only query function"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_TIMELINE_001: propose イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_002: vote イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_003: tally イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_004: execute イベントをタイムスタンプ付きで返す
+# REQ_TIMELINE_005: 全イベントを時系列順で統合返却する read-only 関数
+
+[root]
+id = "ip38-governance-timeline"
+name = "Governance event timeline query (propose/vote/tally/execute)"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip38-01-event-structs"
+name = "REQ_TIMELINE_001-004: Define Idris2 event structs and ABI encoding for GovernanceEvent"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "GovernanceEvent type with variants Propose/Vote/Tally/Execute and timestamp field compiles", verify = "cd td-contracts && idris2-yul --check src/Governance/Timeline.idr" },
+  { description = "ABI encode/decode roundtrip test passes for each event variant", verify = "cd td-contracts && idris2-yul --codegen yul src/Governance/Timeline.idr && echo ok" },
+]
+
+[[root.subtasks]]
+id = "ip38-02-storage-layout"
+name = "REQ_TIMELINE_001-004: Storage layout for event log indexed by proposalId"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Storage slots for event array per proposalId defined in proxy-compatible layout", verify = "grep -r 'slot' td-contracts/src/Governance/Timeline.idr | head -5" },
+  { description = "Write helpers compile and emit valid Yul", verify = "cd td-contracts && idris2-yul --codegen yul src/Governance/TimelineStorage.idr && test -f build/TimelineStorage.yul" },
+]
+
+[[root.subtasks]]
+id = "ip38-03-record-hooks"
+name = "REQ_TIMELINE_001-004: Hook into propose/vote/tally/execute to record timestamped events"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Each governance action (propose, vote, tally, execute) calls recordEvent with block.timestamp", verify = "grep -c 'recordEvent' td-contracts/src/Governance/*.idr | awk -F: '{s+=$2} END{print s >= 4 ? \"ok\" : \"FAIL\"}'" },
+  { description = "Yul codegen succeeds for all modified governance modules", verify = "cd td-contracts && idris2-yul --codegen yul src/Governance/Main.idr && echo ok" },
+]
+
+[[root.subtasks]]
+id = "ip38-04-query-function"
+name = "REQ_TIMELINE_005: Implement getGovernanceTimeline(uint256 proposalId) view function"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Function selector for getGovernanceTimeline(uint256) present in generated Yul", verify = "grep 'getGovernanceTimeline' td-contracts/build/Timeline.yul" },
+  { description = "Function is pure read (no sstore in its Yul output)", verify = "awk '/getGovernanceTimeline/,/}/' td-contracts/build/Timeline.yul | grep -c 'sstore' | xargs test 0 -eq" },
+  { description = "Return ABI encodes array of (uint8 eventType, uint256 timestamp) tuples", verify = "grep 'abi.encode' td-contracts/src/Governance/Timeline.idr | head -3" },
+]
+
+[[root.subtasks]]
+id = "ip38-05-erc7546-registration"
+name = "REQ_TIMELINE_005: Register query function in ERC-7546 proxy via getImplementation(bytes4)"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Selector 0x... for getGovernanceTimeline registered in proxy function table", verify = "grep -r 'getGovernanceTimeline' td-contracts/src/Proxy/ && echo ok" },
+  { description = "solc --strict-assembly compiles final Yul to bytecode", verify = "cd td-contracts && solc --strict-assembly build/Timeline.yul --bin | tail -1 | wc -c | xargs test 1 -lt" },
+]
+
+[[root.subtasks]]
+id = "ip38-06-deploy-verify"
+name = "REQ_TIMELINE_005: Deploy to Base Mainnet via t-ECDSA and verify artifact"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Bytecode deployed via TheWorld t-ECDSA signing", verify = "etherclaw tx-status ip38-deploy --network base" },
+  { description = "On-chain bytecode matches local artifact (IcWasm.Verification)", verify = "etherclaw verify ip38-deploy --network base" },
+]
+
+[[codebase_ref]]
+path = "td-contracts/src/Governance"
+comment = "Existing governance module — hook points for propose/vote/tally/execute"
+
+[[codebase_ref]]
+path = "td-contracts/src/Proxy"
+comment = "ERC-7546 proxy function table — registration pattern for new selectors"
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/ERC7546"
+comment = "ERC-7546 types and getImplementation(bytes4) pattern"
+```

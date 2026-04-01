@@ -1,0 +1,99 @@
+```toml
+version = "1.0"
+id = "theworld-ip-35"
+title = "Voting Delegation — Shareholder が投票権を委任・取消できる機能"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_DELEG_001: Shareholder は任意のアドレスに投票権を委任できる
+# REQ_DELEG_002: 委任先は委任者の投票力を加算して保持する
+# REQ_DELEG_003: 委任者は委任を取り消せる（投票力が元に戻る）
+# REQ_DELEG_004: 自己委任・多重委任の禁止（1段階のみ）
+# REQ_DELEG_005: 委任状態のオンチェーン照会
+
+[root]
+id = "ip35-root"
+name = "Voting Delegation 実装"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip35-01"
+name = "REQ_DELEG_001 — delegate(address) Yul 実装"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Delegation.idr が正常終了する",
+  "生成 Yul に delegate(address) セレクタが含まれる: grep -q 'delegate' build/Delegation.yul",
+  "solc --strict-assembly build/Delegation.yul が bytecode を出力する",
+]
+
+[[root.subtasks]]
+id = "ip35-02"
+name = "REQ_DELEG_002 — getVotingPower 委任加算ロジック"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "getVotingPower(delegatee) が delegatee 自身 + 全委任者の shares 合計を返すテストが通る",
+  "grep -q 'getVotingPower' build/Delegation.yul",
+  "委任者の getVotingPower が 0 を返すことをテストで確認",
+]
+
+[[root.subtasks]]
+id = "ip35-03"
+name = "REQ_DELEG_003 — undelegate() 委任取消"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "undelegate() 呼出後に委任者の getVotingPower が元の shares に戻るテストが通る",
+  "grep -q 'undelegate' build/Delegation.yul",
+  "委任先の getVotingPower が委任者分だけ減少することをテストで確認",
+]
+
+[[root.subtasks]]
+id = "ip35-04"
+name = "REQ_DELEG_004 — 自己委任・多重委任ガード"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "delegate(self) が revert するテストが通る",
+  "既に委任を受けているアドレスへの delegate が revert するテストが通る",
+  "チェーン委任（A→B, B→C）が revert するテストが通る",
+]
+
+[[root.subtasks]]
+id = "ip35-05"
+name = "REQ_DELEG_005 — ERC-7546 Proxy 統合 & クエリ関数"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "getDelegate(address) が現在の委任先を返すテストが通る",
+  "getDelegators(address) が委任者一覧を返すテストが通る",
+  "Proxy の getImplementation(0xdc9cc645) が Delegation impl を返す",
+]
+
+[[root.subtasks]]
+id = "ip35-06"
+name = "Base Mainnet デプロイ & オンチェーン検証"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "etherclaw deploy --network base が成功し contract address を出力する",
+  "IcWasm.Verification で Artifact EVM と Deployed EVM の一致を確認",
+  "デプロイ後に delegate → getVotingPower → undelegate のオンチェーン E2E が通る",
+]
+
+[[codebase_ref]]
+path = "src/TheWorld/Voting.idr"
+comment = "既存の投票ロジック — shares 構造・getVotingPower の現行実装を参照"
+
+[[codebase_ref]]
+path = "src/TheWorld/ERC7546.idr"
+comment = "ERC-7546 Proxy パターン — getImplementation 登録方法を参照"
+
+[[codebase_ref]]
+path = "lib/idris2-subcontract/src/ERC7546.idr"
+comment = "idris2-subcontract の ERC-7546 型定義"
+```

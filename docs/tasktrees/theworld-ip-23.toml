@@ -1,0 +1,86 @@
+```toml
+version = "1.0"
+id = "theworld-ip-23"
+title = "Emergency Pause — DAO全操作の緊急停止メカニズム"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_PAUSE_001: Auditor 3人以上の合意で全操作を一時停止できる
+# REQ_PAUSE_002: 停止中は全てのstate-changing操作がrevertする
+# REQ_PAUSE_003: 解除にはShareholder過半数の投票が必要
+# REQ_PAUSE_004: 停止/解除イベントがon-chainで記録される
+# REQ_PAUSE_005: ERC-7546 Proxy経由で既存機能と統合
+
+[root]
+id = "ip23-root"
+name = "Emergency Pause Mechanism"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip23-1"
+name = "REQ_PAUSE_001 — Auditor多重署名による停止トリガー"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Auditor 3/N 合意で pause 発動する Yul コードが生成される", verify = "idris2-yul --codegen yul src/Pause/Trigger.idr && test -f build/Trigger.yul" },
+  { description = "Auditor 2人以下では pause が revert する", verify = "cd test && idris2 --exec testInsufficientAuditors PauseTriggerTest.idr" },
+  { description = "3人目の署名で PauseActivated イベントが発火する", verify = "cd test && idris2 --exec testPauseEvent PauseTriggerTest.idr" },
+]
+
+[[root.subtasks]]
+id = "ip23-2"
+name = "REQ_PAUSE_002 — 停止中の全操作ガード実装"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "whenNotPaused modifier 相当のガードが全 state-changing 関数に適用される", verify = "grep -r 'whenNotPaused' src/Pause/Guard.idr && idris2-yul --codegen yul src/Pause/Guard.idr" },
+  { description = "停止中に操作を呼ぶと revert する", verify = "cd test && idris2 --exec testRevertWhilePaused PauseGuardTest.idr" },
+]
+
+[[root.subtasks]]
+id = "ip23-3"
+name = "REQ_PAUSE_003 — Shareholder過半数投票による解除"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Shareholder 過半数の投票で unpause される Yul コードが生成される", verify = "idris2-yul --codegen yul src/Pause/Unpause.idr && test -f build/Unpause.yul" },
+  { description = "過半数未満では unpause が revert する", verify = "cd test && idris2 --exec testInsufficientVotes PauseUnpauseTest.idr" },
+  { description = "解除後に操作が正常実行される", verify = "cd test && idris2 --exec testResumeAfterUnpause PauseUnpauseTest.idr" },
+]
+
+[[root.subtasks]]
+id = "ip23-4"
+name = "REQ_PAUSE_004 — イベントログ記録"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "PauseActivated(auditors[], timestamp) イベントが定義される", verify = "grep 'PauseActivated' src/Pause/Events.idr" },
+  { description = "PauseDeactivated(proposalId, timestamp) イベントが定義される", verify = "grep 'PauseDeactivated' src/Pause/Events.idr" },
+]
+
+[[root.subtasks]]
+id = "ip23-5"
+name = "REQ_PAUSE_005 — ERC-7546 Proxy統合とデプロイ"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "getImplementation(bytes4) で Pause 実装が解決される", verify = "cd test && idris2 --exec testProxyResolution PauseProxyTest.idr" },
+  { description = "solc --strict-assembly でバイトコードが生成される", verify = "solc --strict-assembly build/Trigger.yul --bin && solc --strict-assembly build/Unpause.yul --bin" },
+  { description = "t-ECDSA 署名による Base Mainnet デプロイスクリプトが存在する", verify = "test -f deploy/ip23-pause.sh && grep 'TheWorld' deploy/ip23-pause.sh" },
+]
+
+[[codebase_ref]]
+path = "src/Governance/Voting.idr"
+comment = "既存の Shareholder 投票ロジック — 過半数判定パターンを再利用"
+
+[[codebase_ref]]
+path = "src/Proxy/ERC7546.idr"
+comment = "ERC-7546 getImplementation ルーティング — 新 selector 登録パターン"
+
+[[codebase_ref]]
+path = "src/Auth/Roles.idr"
+comment = "Auditor ロール判定 — 署名者の権限検証パターン"
+```
