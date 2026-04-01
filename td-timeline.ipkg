@@ -8,3 +8,17 @@ depends = evm
 modules = Timeline
         , TimelineStorage
         , FunctionRegistry
+        , Governance.Proposal
+        , Governance.Types
+        , Governance.Events
+        , Governance.Cancel
+        , Governance.Tally
+        , Governance.Selectors
+        , Governance.Yul.Proposal
+        , Governance.Yul.Dispatch
+        , ERC7546.Proxy
+        , Proxy.Registry
+        , TD.Governance.Proposal
+        , TD.Governance.Yul.Cancel
+        , TD.Governance.Yul.Tally
+        , TD.Proxy.Router
