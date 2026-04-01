@@ -197,10 +197,11 @@ finalTally pid = do
 executeApproved : ProposalId -> IO Bool
 executeApproved pid = do
   executed <- isFullyExecuted pid
-  if executed then pure False
-  else do
-    setFullyExecuted pid True
-    pure True
+  if executed
+    then pure False
+    else do
+      setFullyExecuted pid True
+      pure True
 
 ||| Tally and immediately execute if approved
 ||| REQ_CANCEL_002: Cancelled proposals are excluded

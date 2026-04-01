@@ -5,6 +5,8 @@
 module Governance.Yul.Proposal
 
 import Governance.Types
+import public EVM.Primitives
+import Data.String
 
 %default covering
 
@@ -165,14 +167,14 @@ cancelProposal pid = do
   if callerAddr /= author
     then do
       -- revert: caller is not the proposal author
-      revert 0 0
+      evmRevert 0 0
       pure False
     else do
       -- REQ_CANCEL_003: Check proposal is in Active or Pending state
       canCancel <- isActivePending pid
       if not canCancel
         then do
-          revert 0 0
+          evmRevert 0 0
           pure False
         else do
           -- REQ_CANCEL_002: Transition to Cancelled state
