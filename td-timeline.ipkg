@@ -3,7 +3,7 @@ version = "0.1.0"
 
 sourcedir = "src"
 
-depends = evm
+depends = idris2-evm, idris2-subcontract
 
 modules = Timeline
         , TimelineStorage

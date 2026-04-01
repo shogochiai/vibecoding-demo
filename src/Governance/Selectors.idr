@@ -19,19 +19,16 @@ public export
 getProposalSelector : String
 getProposalSelector = "c7f758a8"
 
-||| Selector routing table entry.
+||| Selector routing table entry: (selector, functionName, implementation).
 public export
-record SelectorEntry where
-  constructor MkSelectorEntry
-  selector       : String
-  functionName   : String
-  implementation : String  -- address of implementation contract
+SelectorEntry : Type
+SelectorEntry = (String, String, String)
 
 ||| All governance selectors for proxy registration.
 public export
 governanceSelectors : List SelectorEntry
 governanceSelectors =
-  [ MkSelectorEntry cancelProposalSelector "cancelProposal(uint256)" ""
-  , MkSelectorEntry postIpProposalSelector "postIpProposal(string)" ""
-  , MkSelectorEntry getProposalSelector "getProposal(uint256)" ""
+  [ (cancelProposalSelector, "cancelProposal(uint256)", "")
+  , (postIpProposalSelector, "postIpProposal(string)", "")
+  , (getProposalSelector, "getProposal(uint256)", "")
   ]

@@ -168,10 +168,10 @@ export
 proxyDispatch : IO ()
 proxyDispatch = do
   -- Extract selector from calldata
-  calldataSize <- calldatasize
+  calldataSize <- EVM.Primitives.calldatasize
   calldatacopy 0 0 calldataSize
   sel <- mload 0
-  let selector = shr 224 sel  -- right-shift 224 bits to get first 4 bytes
+  selector <- shr 224 sel  -- right-shift 224 bits to get first 4 bytes
 
   -- Look up implementation
   implAddr <- getImplementation selector
@@ -181,7 +181,8 @@ proxyDispatch = do
     then evmRevert 0 0
     else do
       -- DELEGATECALL to implementation
-      success <- delegatecall gas implAddr 0 calldataSize 0 0
+      gasAvail <- gas
+      success <- delegatecall gasAvail implAddr 0 calldataSize 0 0
 
       -- Copy return data
       retSize <- returndatasize

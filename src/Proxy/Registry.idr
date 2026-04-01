@@ -5,6 +5,8 @@
 ||| The proxy's fallback dispatches calls by looking up selectors here.
 module Proxy.Registry
 
+import public EVM.Primitives
+
 %default covering
 
 -- =============================================================================
@@ -127,14 +129,15 @@ proxyDispatch = do
   cdSize <- calldatasize
   calldatacopy 0 0 cdSize
   sel <- mload 0
-  let selector = shr 224 sel
+  selector <- shr 224 sel
 
   implAddr <- getImplementation selector
 
   if implAddr == 0
     then evmRevert 0 0
     else do
-      success <- delegatecall gas implAddr 0 cdSize 0 0
+      gasAvail <- gas
+      success <- delegatecall gasAvail implAddr 0 cdSize 0 0
       retSize <- returndatasize
       returndatacopy 0 0 retSize
       if success == 1

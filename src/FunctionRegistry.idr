@@ -2,9 +2,7 @@
 ||| Registers getProposalTimeline selector in the UCS function registry
 module FunctionRegistry
 
-import EVM
 import EVM.Primitives
-import EVM.Storage
 
 %default total
 
@@ -15,7 +13,7 @@ import EVM.Storage
 ||| getProposalTimeline(uint256) function selector
 ||| keccak256("getProposalTimeline(uint256)") >> 224
 public export
-selectorGetProposalTimeline : Bits256
+selectorGetProposalTimeline : Integer
 selectorGetProposalTimeline = 0xb3a0a8d0
 
 ----------------------------------------------------------------------
@@ -23,15 +21,15 @@ selectorGetProposalTimeline = 0xb3a0a8d0
 ----------------------------------------------------------------------
 
 ||| ERC-7546 UCS registry base slot
-||| keccak256("erc7546.proxy.registry") — standard namespace
+||| keccak256("erc7546.proxy.registry") -- standard namespace
 public export
-registryBaseSlot : Bits256
+registryBaseSlot : Integer
 registryBaseSlot = 0x2f7ed27098ecb1f9c2f5a3d07ac4d1e1fa06d1a3e7c1d2b8f9a0e3c4d5b6a7f8
 
 ||| Compute registry slot for a given function selector
 ||| Maps bytes4 selector -> address (implementation contract)
 public export
-registrySlot : Bits256 -> Bits256
+registrySlot : Integer -> Integer
 registrySlot selector = registryBaseSlot + selector
 
 ----------------------------------------------------------------------
@@ -43,14 +41,14 @@ registrySlot selector = registryBaseSlot + selector
 |||
 ||| @implAddr Address of the deployed Timeline facet contract
 export
-registerTimeline : Bits256 -> EVM ()
+registerTimeline : Integer -> IO ()
 registerTimeline implAddr = do
   let slot = registrySlot selectorGetProposalTimeline
   sstore slot implAddr
 
 ||| Read the implementation address for getProposalTimeline
 export
-getTimelineImpl : EVM Bits256
+getTimelineImpl : IO Integer
 getTimelineImpl = do
   let slot = registrySlot selectorGetProposalTimeline
   sload slot
@@ -66,11 +64,11 @@ getTimelineImpl = do
 ||| This module provides the mapping:
 |||   0xb3a0a8d0 -> Timeline facet address
 export
-getImplementation : EVM ()
+getImplementation : IO ()
 getImplementation = do
-  let selector = calldataload 4
+  selector <- calldataload 4
   let slot = registrySlot selector
   impl <- sload slot
   -- Return address (right-aligned in 32 bytes)
   mstore 0 impl
-  evm_return 0 32
+  evmReturn 0 32

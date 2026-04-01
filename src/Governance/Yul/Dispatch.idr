@@ -4,6 +4,7 @@
 module Governance.Yul.Dispatch
 
 import Governance.Yul.Proposal
+import Data.String
 
 %default covering
 
@@ -36,27 +37,42 @@ SEL_CANCEL_PROPOSAL = SELECTOR_CANCEL_PROPOSAL  -- 0xd8e780df
 -- Dispatch Entry
 -- =============================================================================
 
-||| A dispatch table entry mapping selector to function name.
+||| A dispatch table entry: (selector, functionName, functionSig).
 public export
-record DispatchEntry where
-  constructor MkDispatchEntry
-  selector     : Integer
-  functionName : String
-  functionSig  : String
+DispatchEntry : Type
+DispatchEntry = (Integer, String, String)
 
 ||| All governance dispatch entries including cancelProposal.
 export
 governanceDispatchTable : List DispatchEntry
 governanceDispatchTable =
-  [ MkDispatchEntry SEL_PROPOSE           "propose"          "propose(bytes32)"
-  , MkDispatchEntry SEL_TALLY             "tally"            "tally(uint256)"
-  , MkDispatchEntry SEL_TALLY_AND_EXECUTE "tallyAndExecute"  "tallyAndExecute(uint256)"
-  , MkDispatchEntry SEL_CANCEL_PROPOSAL   "cancelProposal"   "cancelProposal(uint256)"
+  [ (SEL_PROPOSE,           "propose",          "propose(bytes32)")
+  , (SEL_TALLY,             "tally",            "tally(uint256)")
+  , (SEL_TALLY_AND_EXECUTE, "tallyAndExecute",  "tallyAndExecute(uint256)")
+  , (SEL_CANCEL_PROPOSAL,   "cancelProposal",   "cancelProposal(uint256)")
   ]
 
 -- =============================================================================
 -- Yul Dispatch Codegen
 -- =============================================================================
+
+hexDigit : Integer -> Char
+hexDigit i = if i < 10
+  then chr (cast i + 48)
+  else chr (cast i - 10 + 97)
+
+toHexChars : Integer -> List Char -> List Char
+toHexChars 0 [] = ['0']
+toHexChars 0 acc = acc
+toHexChars n acc = toHexChars (n `div` 16) (hexDigit (n `mod` 16) :: acc)
+
+showHex : Integer -> String
+showHex n = pack (toHexChars n [])
+
+dispatchCase : DispatchEntry -> String
+dispatchCase (sel, fname, fsig) = "case 0x" ++ showHex sel
+  ++ " { /* " ++ fsig ++ " */ "
+  ++ fname ++ "(decodeUint256()) }"
 
 ||| Generate Yul switch statement for selector dispatch.
 ||| Includes cancelProposal case routing to cancel logic.
@@ -70,21 +86,3 @@ generateDispatchYul entries =
     , unlines cases
     , "default { revert(0, 0) }"
     ]
-  where
-    dispatchCase : DispatchEntry -> String
-    dispatchCase e = "case 0x" ++ showHex e.selector
-      ++ " { /* " ++ e.functionSig ++ " */ "
-      ++ e.functionName ++ "(decodeUint256()) }"
-
-    showHex : Integer -> String
-    showHex n = pack (toHexChars n [])
-      where
-        hexDigit : Integer -> Char
-        hexDigit i = if i < 10
-          then chr (cast i + 48)
-          else chr (cast i - 10 + 97)
-
-        toHexChars : Integer -> List Char -> List Char
-        toHexChars 0 [] = ['0']
-        toHexChars 0 acc = acc
-        toHexChars n acc = toHexChars (n `div` 16) (hexDigit (n `mod` 16) :: acc)
