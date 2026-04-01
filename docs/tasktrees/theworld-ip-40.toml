@@ -1,0 +1,95 @@
+```toml
+version = "1.0"
+id = "theworld-ip-40"
+title = "DAO Emergency Pause via Auditor Multisig (3-of-N)"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_PAUSE_001: Auditor role registry (add/remove auditors, on-chain)
+# REQ_PAUSE_002: Pause proposal creation by any registered auditor
+# REQ_PAUSE_003: Threshold signature collection (3-of-N auditors required)
+# REQ_PAUSE_004: DAO-wide pause flag enforced across all proxy functions
+# REQ_PAUSE_005: Unpause mechanism (same 3-of-N threshold or governance vote)
+
+[[codebase_ref]]
+path = "src/ERC7546/Proxy.idr"
+comment = "ERC-7546 proxy pattern — getImplementation(bytes4) dispatch to add pause guard"
+
+[[codebase_ref]]
+path = "src/ERC7546/Diamond.idr"
+comment = "Reference for selector routing — pause check must precede delegation"
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/Subcontract/ERC7546.idr"
+comment = "ERC-7546 types — FunctionImpl, proxy storage layout"
+
+[root]
+id = "ip40-root"
+name = "DAO Emergency Pause System"
+estimate = { hours = 34 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip40-01"
+name = "REQ_PAUSE_001 — Auditor Registry Implementation"
+estimate = { hours = 6 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "AuditorRegistry Yul module compiles", verify = "idris2-yul --codegen yul src/Pause/AuditorRegistry.idr && echo OK" },
+  { description = "addAuditor / removeAuditor selectors present in ABI", verify = "grep -c 'selector.*addAuditor\\|removeAuditor' build/AuditorRegistry.yul | grep -q 2" },
+  { description = "Only owner can mutate registry (access control test)", verify = "cd test && idris2-yul --codegen yul TestAuditorRegistry.idr && echo PASS" },
+]
+
+[[root.subtasks]]
+id = "ip40-02"
+name = "REQ_PAUSE_002 — Pause Proposal Creation"
+estimate = { hours = 6 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "proposePause function emits PauseProposed event", verify = "grep -q 'log.*PauseProposed' build/PauseProposal.yul" },
+  { description = "Only registered auditors can create proposals", verify = "cd test && idris2-yul --codegen yul TestPauseProposal.idr && echo PASS" },
+]
+
+[[root.subtasks]]
+id = "ip40-03"
+name = "REQ_PAUSE_003 — 3-of-N Threshold Confirmation"
+estimate = { hours = 8 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "confirmPause collects signatures and triggers at threshold=3", verify = "cd test && idris2-yul --codegen yul TestThreshold.idr && echo PASS" },
+  { description = "Duplicate confirmation from same auditor is rejected", verify = "grep -q 'revert.*AlreadyConfirmed' build/PauseThreshold.yul" },
+  { description = "Yul compiles to bytecode via solc", verify = "solc --strict-assembly build/PauseThreshold.yul --bin && echo OK" },
+]
+
+[[root.subtasks]]
+id = "ip40-04"
+name = "REQ_PAUSE_004 — Proxy Pause Guard Integration"
+estimate = { hours = 6 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "ERC-7546 proxy checks paused flag before delegation", verify = "grep -q 'paused.*revert' build/Proxy.yul" },
+  { description = "getImplementation(0xdc9cc645) still resolves when unpaused", verify = "cd test && idris2-yul --codegen yul TestProxyPause.idr && echo PASS" },
+]
+
+[[root.subtasks]]
+id = "ip40-05"
+name = "REQ_PAUSE_005 — Unpause Mechanism"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "unpause requires 3-of-N auditor confirmations", verify = "cd test && idris2-yul --codegen yul TestUnpause.idr && echo PASS" },
+  { description = "Unpaused event emitted on successful unpause", verify = "grep -q 'log.*Unpaused' build/Unpause.yul" },
+]
+
+[[root.subtasks]]
+id = "ip40-06"
+name = "Deploy & Verify on Base Mainnet"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "t-ECDSA signed deployment tx submitted via TheWorld", verify = "etherclaw tx-status --network base --contract PauseSystem | grep -q 'confirmed'" },
+  { description = "On-chain bytecode matches compiled artifact", verify = "etherclaw verify --artifact build/PauseSystem.bin --network base && echo VERIFIED" },
+]
+```

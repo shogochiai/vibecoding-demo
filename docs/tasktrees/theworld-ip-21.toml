@@ -1,0 +1,96 @@
+```toml
+version = "1.0"
+id = "theworld-ip-21"
+title = "Proposal lifecycle timeline read-only function"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_TIMELINE_001: Read-only function returning proposal lifecycle events (propose, vote, tally, execute) with timestamps
+# REQ_TIMELINE_002: Events encoded as array of (eventType, timestamp) tuples per proposal ID
+# REQ_TIMELINE_003: Yul codegen via idris2-evm, no Solidity
+# REQ_TIMELINE_004: ERC-7546 compatible (pure logic, no storage in implementation)
+# REQ_TIMELINE_005: Deployed via t-ECDSA signing to Base Mainnet
+
+[root]
+id = "ip21-timeline"
+name = "Proposal lifecycle timeline query function"
+estimate = { hours = 14 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip21-01-types"
+name = "REQ_TIMELINE_001 — Define ProposalEvent struct and timeline return type in Idris2"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --check src/Timeline.idr exits 0",
+  "grep -q 'ProposalEvent' src/Timeline.idr",
+  "grep -q 'getProposalTimeline' src/Timeline.idr",
+]
+
+[[root.subtasks]]
+id = "ip21-02-storage-layout"
+name = "REQ_TIMELINE_002 — Define storage slot layout for event timestamps (propose/vote/tally/execute)"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --check src/TimelineStorage.idr exits 0",
+  "grep -qE '(Propose|Vote|Tally|Execute)' src/TimelineStorage.idr",
+]
+
+[[root.subtasks]]
+id = "ip21-03-yul-codegen"
+name = "REQ_TIMELINE_003 — Implement getProposalTimeline as view function with Yul codegen"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Timeline.idr -o build/Timeline.yul && test -f build/Timeline.yul",
+  "solc --strict-assembly build/Timeline.yul --bin && test $? -eq 0",
+  "grep -q 'staticcall\\|sload' build/Timeline.yul",
+]
+
+[[root.subtasks]]
+id = "ip21-04-erc7546-integration"
+name = "REQ_TIMELINE_004 — Register selector in ERC-7546 proxy via idris2-subcontract"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -q 'getProposalTimeline' src/FunctionRegistry.idr",
+  "idris2-yul --check src/FunctionRegistry.idr exits 0",
+  "grep -q '0x' src/FunctionRegistry.idr",
+]
+
+[[root.subtasks]]
+id = "ip21-05-deploy-verify"
+name = "REQ_TIMELINE_005 — Deploy to Base Mainnet via t-ECDSA and verify artifact"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "etherclaw deploy --network base --dry-run build/Timeline.yul exits 0",
+  "etherclaw verify --artifact build/Timeline.yul --network base exits 0",
+]
+
+[[root.subtasks]]
+id = "ip21-06-test"
+name = "REQ_TIMELINE_001 — Unit test: timeline returns correct event sequence and timestamps"
+estimate = { hours = 1 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --check test/TimelineTest.idr exits 0",
+  "idris2-yul --exec test/TimelineTest.idr | grep -q 'PASS'",
+]
+
+[[codebase_ref]]
+path = "src/Governance.idr"
+comment = "Existing governance module — check how propose/vote/tally/execute events are emitted and where timestamps are stored"
+
+[[codebase_ref]]
+path = "src/ERC7546.idr"
+comment = "ERC-7546 proxy pattern — reference for selector registration via getImplementation(bytes4)"
+
+[[codebase_ref]]
+path = "src/Storage.idr"
+comment = "Existing storage slot conventions — align timeline storage layout"
+```

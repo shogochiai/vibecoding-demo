@@ -1,0 +1,88 @@
+```toml
+version = "1.0"
+id = "theworld-ip-31"
+title = "Shareholder 投票権委任 (Delegation)"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_DELEG_001: Shareholder は任意のアドレスに投票権を委任できる
+# REQ_DELEG_002: 委任先アドレスは委任元の投票力を加算して投票できる
+# REQ_DELEG_003: 委任は上書き可能（再委任で前の委任を無効化）
+# REQ_DELEG_004: 委任の解除（self-delegate）ができる
+# REQ_DELEG_005: 委任チェーン禁止（A→B→C は不可、直接委任のみ）
+
+[root]
+id = "ip31-delegation"
+name = "投票権委任機能の実装"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip31-01-storage"
+name = "REQ_DELEG_001: 委任ストレージレイアウト設計 & Idris2 型定義"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Delegation.idr が成功する",
+  "生成 Yul に delegation mapping (delegator → delegatee) のストレージスロットが含まれる",
+  "grep -q 'sstore' build/Delegation.yul"
+]
+
+[[root.subtasks]]
+id = "ip31-02-delegate-fn"
+name = "REQ_DELEG_001/003/004: delegate(address) 関数実装"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "solc --strict-assembly build/Delegation.yul --bin が成功する",
+  "delegate(address) セレクタが ABI に存在: grep -q 'delegate' build/Delegation.yul",
+  "self-delegate でリセットされるロジックが Yul に含まれる"
+]
+
+[[root.subtasks]]
+id = "ip31-03-voting-power"
+name = "REQ_DELEG_002: getVotingPower(address) 委任集計ロジック"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "getVotingPower が委任元の残高を加算して返すロジックが生成 Yul に存在する",
+  "solc --strict-assembly build/Delegation.yul --bin が成功する",
+  "REQ_DELEG_005 違反（チェーン委任）を拒否するガード: grep -q 'revert' build/Delegation.yul"
+]
+
+[[root.subtasks]]
+id = "ip31-04-erc7546-facet"
+name = "ERC-7546 Proxy 登録: Delegation facet を getImplementation(bytes4) に接続"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "delegate(address) セレクタが Proxy の selector→implementation マッピングに登録される",
+  "getImplementation(0xdc9cc645) 経由でファセット解決できるデプロイスクリプトが存在する",
+  "idris2-subcontract の ERC7546 型を import している: grep -q 'ERC7546' src/Delegation.idr"
+]
+
+[[root.subtasks]]
+id = "ip31-05-deploy-verify"
+name = "REQ_DELEG_001-005: Base Mainnet デプロイ & オンチェーン検証"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "t-ECDSA 署名経由で Base Mainnet にデプロイされたトランザクションハッシュが記録される",
+  "IcWasm.Verification で Artifact EVM と Deployed EVM のバイトコード一致を確認",
+  "etherclaw verify --contract <address> が成功する"
+]
+
+[[codebase_ref]]
+path = "src/Governance.idr"
+comment = "既存の投票ロジック — getVotingPower 統合ポイントを確認"
+
+[[codebase_ref]]
+path = "src/ERC7546/Proxy.idr"
+comment = "ERC-7546 Proxy パターン — facet 登録の既存実装を参照"
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/ERC7546.idr"
+comment = "ERC-7546 型定義 — getImplementation セレクタ定義"
+```

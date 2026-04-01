@@ -1,0 +1,94 @@
+```toml
+version = "1.0"
+id = "theworld-ip-26"
+title = "Governance event timeline read-only function (propose/vote/tally/execute with timestamps)"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_GEVT_001: Store governance events (propose, vote, tally, execute) with timestamps on-chain
+# REQ_GEVT_002: Provide read-only view function returning event timeline for a given proposal
+# REQ_GEVT_003: Yul codegen via idris2-evm, ERC-7546 compatible implementation
+# REQ_GEVT_004: Deploy via t-ECDSA signing through TheWorld canister to Base Mainnet
+# REQ_GEVT_005: On-chain verification via IcWasm.Verification
+
+[[codebase_ref]]
+path = "idris2-evm/src/EVM/Yul/Storage.idr"
+comment = "Storage layout patterns for event log structs"
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/ERC7546/Proxy.idr"
+comment = "ERC-7546 getImplementation(bytes4) proxy pattern"
+
+[[codebase_ref]]
+path = "idris2-evm/src/EVM/Yul/ABI.idr"
+comment = "ABI encoding for return values (dynamic arrays, tuples)"
+
+[root]
+id = "gevt-root"
+name = "Governance Event Timeline View Function"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "gevt-001"
+name = "REQ_GEVT_001 — Define event storage layout and Idris2 types"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { desc = "GovernanceEvent record type compiles", cmd = "cd td-contracts && idris2 --check src/Governance/EventTimeline.idr" },
+  { desc = "Storage slot layout defined for event array per proposal", cmd = "grep -q 'EventSlot' src/Governance/EventTimeline.idr" },
+]
+
+[[root.subtasks]]
+id = "gevt-002"
+name = "REQ_GEVT_002 — Implement getProposalTimeline view function in Idris2-Yul"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  { desc = "View function returns (uint8 eventType, uint256 timestamp)[] for proposalId", cmd = "cd td-contracts && idris2 --check src/Governance/EventTimeline.idr && grep -q 'getProposalTimeline' src/Governance/EventTimeline.idr" },
+  { desc = "Function selector computed and registered", cmd = "grep -q 'selector.*getProposalTimeline' src/Governance/EventTimeline.idr" },
+  { desc = "ABI encoding handles dynamic array of tuples", cmd = "grep -q 'encodeDynArray' src/Governance/EventTimeline.idr" },
+]
+
+[[root.subtasks]]
+id = "gevt-003"
+name = "REQ_GEVT_003 — Yul codegen and solc compilation"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { desc = "Yul output generated", cmd = "cd td-contracts && idris2-yul --codegen yul src/Governance/EventTimeline.idr -o build/EventTimeline.yul" },
+  { desc = "solc strict-assembly produces bytecode", cmd = "solc --strict-assembly build/EventTimeline.yul --bin | grep -q '^[0-9a-f]'" },
+]
+
+[[root.subtasks]]
+id = "gevt-004"
+name = "REQ_GEVT_003 — ERC-7546 implementation registration and proxy integration"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { desc = "Implementation registered under proxy via getImplementation(0xdc9cc645)", cmd = "grep -q 'dc9cc645' src/Governance/EventTimeline.idr" },
+  { desc = "No storage writes in implementation contract (pure logic)", cmd = "! grep -q 'sstore' build/EventTimeline.yul" },
+]
+
+[[root.subtasks]]
+id = "gevt-005"
+name = "REQ_GEVT_004 — Deploy to Base Mainnet via t-ECDSA"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { desc = "Deployment tx submitted via TheWorld canister", cmd = "etherclaw tx-status --network base --tag gevt-deploy | grep -q 'confirmed'" },
+  { desc = "Contract address recorded", cmd = "test -f deployments/base/EventTimeline.json && jq -e '.address' deployments/base/EventTimeline.json" },
+]
+
+[[root.subtasks]]
+id = "gevt-006"
+name = "REQ_GEVT_005 — On-chain verification"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { desc = "Artifact EVM matches deployed bytecode", cmd = "etherclaw verify --artifact build/EventTimeline.yul --deployed $(jq -r '.address' deployments/base/EventTimeline.json) --network base" },
+  { desc = "Read-only call returns empty timeline for nonexistent proposal", cmd = "cast call $(jq -r '.address' deployments/base/EventTimeline.json) 'getProposalTimeline(uint256)' 999999 --rpc-url base | grep -q '0x'" },
+]
+```

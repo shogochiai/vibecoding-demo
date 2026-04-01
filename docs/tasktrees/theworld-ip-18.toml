@@ -1,0 +1,85 @@
+```toml
+# SPEC:
+# REQ_CANCEL_001 — cancelProposal selector: author can cancel own proposal before voting ends
+# REQ_CANCEL_002 — State transition: proposal status → Cancelled, excluded from tally
+# REQ_CANCEL_003 — Access control: only original author can cancel (revert otherwise)
+# REQ_CANCEL_004 — Yul codegen: cancelProposal(uint256) function via idris2-evm
+# REQ_CANCEL_005 — ERC-7546 integration: register cancelProposal selector in proxy routing
+
+version = "1.0"
+id = "theworld-ip-18"
+title = "Add cancelProposal to td governance"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+[[codebase_ref]]
+path = "src/Governance/Proposal.idr"
+comment = "Existing proposal state machine — add Cancelled state here"
+
+[[codebase_ref]]
+path = "src/Governance/Selectors.idr"
+comment = "Selector registry — add cancelProposal bytes4 routing"
+
+[[codebase_ref]]
+path = "src/ERC7546/Proxy.idr"
+comment = "ERC-7546 proxy getImplementation routing table"
+
+[root]
+id = "cancel-proposal"
+name = "cancelProposal implementation"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "cancel-state"
+name = "REQ_CANCEL_002 — Add Cancelled state to proposal lifecycle"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Cancelled variant exists in ProposalStatus", verify = "grep -q 'Cancelled' src/Governance/Proposal.idr" },
+  { description = "Cancelled proposals excluded from tally aggregation", verify = "grep -q 'Cancelled.*=>.*skip\\|filter.*Cancelled' src/Governance/Tally.idr" },
+]
+
+[[root.subtasks]]
+id = "cancel-logic"
+name = "REQ_CANCEL_001 REQ_CANCEL_003 — cancelProposal auth + transition logic"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal checks msg.sender == proposal.author", verify = "grep -q 'caller.*author\\|assertAuthor' src/Governance/Cancel.idr" },
+  { description = "Reverts if proposal already ended or already cancelled", verify = "grep -q 'revert\\|require.*Active\\|require.*Pending' src/Governance/Cancel.idr" },
+  { description = "Sets proposal status to Cancelled on success", verify = "grep -q 'Cancelled' src/Governance/Cancel.idr" },
+]
+
+[[root.subtasks]]
+id = "cancel-yul"
+name = "REQ_CANCEL_004 — Yul codegen for cancelProposal(uint256)"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Yul output compiles with solc --strict-assembly", verify = "solc --strict-assembly build/Cancel.yul 2>&1 | grep -q 'Binary'" },
+  { description = "Generated selector matches cancelProposal(uint256) = 0xe0a8f6f5", verify = "grep -q 'e0a8f6f5' build/Cancel.yul" },
+]
+
+[[root.subtasks]]
+id = "cancel-erc7546"
+name = "REQ_CANCEL_005 — Register cancelProposal in ERC-7546 proxy"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Proxy routes 0xe0a8f6f5 to cancel implementation", verify = "grep -q 'e0a8f6f5' src/ERC7546/Proxy.idr" },
+  { description = "getImplementation(0xe0a8f6f5) returns non-zero address", verify = "cast call $PROXY 'getImplementation(bytes4)' '0xe0a8f6f5' --rpc-url $RPC | grep -v '0x0000000000000000000000000000000000000000'" },
+]
+
+[[root.subtasks]]
+id = "cancel-test"
+name = "REQ_CANCEL_001-005 — Integration tests and deploy verification"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Author can cancel own active proposal (test passes)", verify = "idris2-yul test --only cancelProposal 2>&1 | grep -q 'passed'" },
+  { description = "Non-author cancel reverts (test passes)", verify = "idris2-yul test --only cancelProposalUnauthorized 2>&1 | grep -q 'passed'" },
+  { description = "Cancelled proposal not counted in tally (test passes)", verify = "idris2-yul test --only cancelledExcludedFromTally 2>&1 | grep -q 'passed'" },
+]
+```

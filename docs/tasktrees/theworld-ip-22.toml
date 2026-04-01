@@ -1,0 +1,95 @@
+```toml
+version = "1.0"
+id = "theworld-ip-22"
+title = "Voting Power Delegation for Shareholders"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_DELEG_001: Shareholder can delegate voting power to another address
+# REQ_DELEG_002: Delegatee accumulates delegator's voting power
+# REQ_DELEG_003: Delegator can revoke delegation at any time
+# REQ_DELEG_004: Delegation state queryable on-chain
+# REQ_DELEG_005: ERC-7546 proxy integration for delegation facet
+
+[root]
+id = "ip22-delegation"
+name = "Voting Power Delegation"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip22-delegation-types"
+name = "REQ_DELEG_001 — Delegation storage layout and Idris2 types"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "pack typecheck succeeds: pack build td",
+  "Delegation record type exists: grep -r 'DelegationRecord\\|DelegateMapping' src/",
+  "Storage slot constants defined: grep -r 'DELEGATION_SLOT' src/"
+]
+
+[[root.subtasks]]
+id = "ip22-delegate-facet"
+name = "REQ_DELEG_001 REQ_DELEG_002 — delegate() facet Yul codegen"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "Yul output compiles: solc --strict-assembly build/Delegation.yul",
+  "delegate function selector present: grep 'delegate' build/Delegation.yul",
+  "Delegatee voting power accumulation logic exists: grep -r 'addVotingPower\\|accumulat' src/"
+]
+
+[[root.subtasks]]
+id = "ip22-revoke-facet"
+name = "REQ_DELEG_003 — revokeDelegation() facet Yul codegen"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "Yul output compiles: solc --strict-assembly build/RevokeDelegation.yul",
+  "Revoke restores original voting power: grep -r 'removeVotingPower\\|revokeDelegat' src/",
+  "Cannot revoke without active delegation: grep -r 'revert\\|require.*noDelegation' build/RevokeDelegation.yul"
+]
+
+[[root.subtasks]]
+id = "ip22-query-facet"
+name = "REQ_DELEG_004 — getDelegate() and getVotingPower() view facets"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "Yul output compiles: solc --strict-assembly build/DelegationView.yul",
+  "Both view selectors present: grep -c 'getDelegate\\|getVotingPower' build/DelegationView.yul | grep -q 2",
+  "Returns correct types (address, uint256): grep -r 'mstore.*address\\|mstore.*uint' build/DelegationView.yul"
+]
+
+[[root.subtasks]]
+id = "ip22-proxy-register"
+name = "REQ_DELEG_005 — Register delegation facets in ERC-7546 proxy"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "Selector 0xdc9cc645 getImplementation routes delegation selectors: grep -r 'dc9cc645\\|getImplementation' src/",
+  "Deploy script includes delegation facet registration: grep -r 'Delegation\\|delegation' src/deploy/",
+  "pack build succeeds with proxy integration: pack build td"
+]
+
+[[root.subtasks]]
+id = "ip22-verify-deploy"
+name = "REQ_DELEG_001-005 — Bytecode verification and Base Mainnet deploy"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "Artifact verification passes: grep -r 'IcWasm.Verification\\|verifyArtifact' src/",
+  "t-ECDSA signing integrated: grep -r 'tEcdsa\\|signTransaction' src/deploy/",
+  "Deployment script targets Base Mainnet chain ID 8453: grep -r '8453\\|base.*mainnet' src/deploy/"
+]
+
+[[codebase_ref]]
+path = "src/TheWorld/EVM"
+comment = "Existing EVM facet patterns and ERC-7546 proxy setup"
+
+[[codebase_ref]]
+path = "src/TheWorld/EVM/Governance"
+comment = "Existing governance/voting logic to integrate delegation with"
+```

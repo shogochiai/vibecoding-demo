@@ -1,0 +1,94 @@
+```toml
+# SPEC:
+# REQ_CANCEL_001 — cancelProposal selector: author can cancel own proposal before voting ends
+# REQ_CANCEL_002 — State transition: proposal moves to Cancelled state, excluded from tally
+# REQ_CANCEL_003 — Access control: only original author can cancel; revert otherwise
+# REQ_CANCEL_004 — Event emission: ProposalCancelled(uint256 proposalId) indexed
+# REQ_CANCEL_005 — ERC-7546 integration: register cancelProposal in proxy via getImplementation(bytes4)
+
+version = "1.0"
+id = "theworld-ip-25"
+title = "Add cancelProposal to td governance"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+[[codebase_ref]]
+path = "src/Governance/Proposal.idr"
+comment = "Existing proposal state machine and storage layout"
+
+[[codebase_ref]]
+path = "src/Governance/Vote.idr"
+comment = "Voting logic and tally — cancel must exclude from tally"
+
+[[codebase_ref]]
+path = "src/Proxy/Registry.idr"
+comment = "ERC-7546 selector registration for getImplementation(bytes4)"
+
+[root]
+id = "ip25-cancel-proposal"
+name = "Implement cancelProposal for td governance"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip25-01-state-transition"
+name = "REQ_CANCEL_001 REQ_CANCEL_002 — Define Cancelled state and cancelProposal transition"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Cancelled added to ProposalState enum", verify = "grep -q 'Cancelled' src/Governance/Proposal.idr" },
+  { description = "cancelProposal transitions Active → Cancelled", verify = "idris2-yul --check src/Governance/Cancel.idr" },
+  { description = "Cancelled proposals excluded from tally query", verify = "grep -q 'Cancelled => neutral' src/Governance/Vote.idr" },
+]
+
+[[root.subtasks]]
+id = "ip25-02-access-control"
+name = "REQ_CANCEL_003 — Author-only access control guard"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal reverts when caller != author", verify = "idris2-yul --check src/Governance/Cancel.idr && grep -q 'requireAuthor' src/Governance/Cancel.idr" },
+  { description = "cancelProposal reverts when voting already ended", verify = "grep -q 'requireVotingActive' src/Governance/Cancel.idr" },
+]
+
+[[root.subtasks]]
+id = "ip25-03-event-emission"
+name = "REQ_CANCEL_004 — Emit ProposalCancelled event"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "ProposalCancelled event defined with indexed proposalId", verify = "grep -q 'ProposalCancelled' src/Governance/Cancel.idr" },
+  { description = "Event emitted in cancelProposal body", verify = "grep -A5 'cancelProposal' src/Governance/Cancel.idr | grep -q 'emitLog'" },
+]
+
+[[root.subtasks]]
+id = "ip25-04-erc7546-registration"
+name = "REQ_CANCEL_005 — Register cancelProposal selector in ERC-7546 proxy"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal(uint256) selector registered in proxy registry", verify = "grep -q 'cancelProposal' src/Proxy/Registry.idr" },
+  { description = "getImplementation(0x) resolves to Cancel implementation", verify = "idris2-yul --check src/Proxy/Registry.idr" },
+]
+
+[[root.subtasks]]
+id = "ip25-05-yul-codegen-compile"
+name = "Yul codegen and solc compilation"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Yul output generated without errors", verify = "idris2-yul --codegen yul src/Governance/Cancel.idr -o build/Cancel.yul" },
+  { description = "solc strict-assembly produces bytecode", verify = "solc --strict-assembly build/Cancel.yul --bin | grep -q '0x'" },
+]
+
+[[root.subtasks]]
+id = "ip25-06-deploy-verify"
+name = "Deploy to Base Mainnet via t-ECDSA and verify artifact"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Deployment tx confirmed on Base Mainnet", verify = "etherclaw status --contract Cancel --network base" },
+  { description = "On-chain bytecode matches compiled artifact", verify = "etherclaw verify --artifact build/Cancel.bin --network base" },
+]
+```

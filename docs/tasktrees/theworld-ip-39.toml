@@ -1,0 +1,88 @@
+```toml
+version = "1.0"
+id = "theworld-ip-39"
+title = "Shareholder Vote Delegation"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_DELEG_001: Shareholder can delegate voting power to another address
+# REQ_DELEG_002: Delegation state is stored in proxy storage (ERC-7546 pattern)
+# REQ_DELEG_003: Delegate can vote on behalf of delegator
+# REQ_DELEG_004: Delegator can revoke delegation at any time
+# REQ_DELEG_005: Delegation does not transfer token ownership
+
+[root]
+id = "ip39-root"
+name = "Vote Delegation"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip39-1"
+name = "REQ_DELEG_001 — Delegation Yul codegen module"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul compiles Delegation module without errors",
+  "Generated Yul contains delegate(address) function with selector",
+  "solc --strict-assembly produces valid bytecode from generated Yul"
+]
+
+[[root.subtasks]]
+id = "ip39-2"
+name = "REQ_DELEG_002 — ERC-7546 proxy storage layout for delegation mapping"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "Proxy getImplementation(bytes4) returns delegation facet address for delegate/revoke selectors",
+  "Storage slot for delegator→delegate mapping follows ERC-7546 namespaced layout",
+  "idris2-subcontract type-checks proxy registration of delegation facet"
+]
+
+[[root.subtasks]]
+id = "ip39-3"
+name = "REQ_DELEG_003 — Delegated voting integration"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "Vote function resolves effective voter via delegation mapping",
+  "Delegate address can cast vote and weight equals delegator share count",
+  "Double-vote prevention covers both delegator and delegate addresses"
+]
+
+[[root.subtasks]]
+id = "ip39-4"
+name = "REQ_DELEG_004 — Revoke delegation"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "revokeDelegation() clears delegator→delegate mapping in Yul output",
+  "After revocation delegator can vote directly",
+  "solc --strict-assembly compiles revoke path without warnings"
+]
+
+[[root.subtasks]]
+id = "ip39-5"
+name = "REQ_DELEG_005 — Deploy and verify on Base Mainnet"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  "t-ECDSA signed tx deploys delegation facet to Base Mainnet",
+  "Proxy updated via registerImplementation for new selectors",
+  "IcWasm.Verification confirms Artifact EVM matches Deployed EVM"
+]
+
+[[codebase_ref]]
+path = "src/TheWorld/Governance/Vote.idr"
+comment = "Existing vote module — integrate delegation resolution into vote weight calculation"
+
+[[codebase_ref]]
+path = "src/TheWorld/ERC7546/Proxy.idr"
+comment = "ERC-7546 proxy pattern — register delegation facet selectors"
+
+[[codebase_ref]]
+path = "src/TheWorld/Deploy/Base.idr"
+comment = "Base Mainnet deploy flow via t-ECDSA"
+```

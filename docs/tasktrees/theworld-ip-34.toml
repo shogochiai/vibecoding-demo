@@ -1,0 +1,106 @@
+```toml
+version = "1.0"
+id = "theworld-ip-34"
+title = "Proposal lifecycle timeline read-only view (propose/vote/tally/execute events)"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_TIMELINE_001: Return timestamped events for propose, vote, tally, execute phases
+# REQ_TIMELINE_002: Read-only (view/pure) function, no state mutation
+# REQ_TIMELINE_003: Structured return type with event kind + timestamp + proposal ID
+# REQ_TIMELINE_004: ERC-7546 compatible — logic in implementation, proxy delegates
+# REQ_TIMELINE_005: Yul codegen via idris2-evm, no Solidity
+
+[root]
+id = "ip34-timeline"
+name = "Proposal lifecycle timeline query function"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip34-timeline-types"
+name = "REQ_TIMELINE_003 — Define TimelineEvent struct and EventKind enum in Idris2"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -r 'TimelineEvent' src/ | grep -q 'data TimelineEvent'",
+  "grep -r 'EventKind' src/ | grep -qE 'Propose|Vote|Tally|Execute'",
+  "idris2-yul --check src/Timeline/Types.idr"
+]
+
+[[root.subtasks]]
+id = "ip34-timeline-storage"
+name = "REQ_TIMELINE_001 — Storage layout for event log (append-only slot mapping)"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -r 'timelineSlot' src/ | grep -q 'StorageSlot'",
+  "grep -r 'appendEvent' src/ | grep -q 'proposalId'",
+  "idris2-yul --check src/Timeline/Storage.idr"
+]
+
+[[root.subtasks]]
+id = "ip34-timeline-query"
+name = "REQ_TIMELINE_002 — Pure read-only getTimeline(proposalId) implementation"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -r 'getTimeline' src/ | grep -qE 'view|pure'",
+  "grep -r 'getTimeline' src/ | grep -q 'proposalId'",
+  "idris2-yul --codegen yul src/Timeline/Query.idr && test -f build/Timeline_Query.yul"
+]
+
+[[root.subtasks]]
+id = "ip34-timeline-selector"
+name = "REQ_TIMELINE_004 — ERC-7546 selector registration for getTimeline(uint256)"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -r 'getTimeline' src/ | grep -q 'selector'",
+  "grep -r '0xdc9cc645' src/ | grep -q 'getImplementation'",
+  "idris2-yul --check src/Timeline/Selector.idr"
+]
+
+[[root.subtasks]]
+id = "ip34-timeline-emit"
+name = "REQ_TIMELINE_001 — Hook event emission into propose/vote/tally/execute flows"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  "grep -rn 'appendEvent.*Propose' src/ | grep -q 'timestamp'",
+  "grep -rn 'appendEvent.*Execute' src/ | grep -q 'timestamp'",
+  "idris2-yul --codegen yul src/Governance/Lifecycle.idr"
+]
+
+[[root.subtasks]]
+id = "ip34-timeline-verify"
+name = "REQ_TIMELINE_005 — Yul compilation and bytecode verification"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  "idris2-yul --codegen yul src/Timeline/Query.idr && solc --strict-assembly build/Timeline_Query.yul --bin | grep -q '0x'",
+  "idris2-yul --codegen yul src/Timeline/Storage.idr && solc --strict-assembly build/Timeline_Storage.yul --bin | grep -q '0x'"
+]
+
+[[codebase_ref]]
+path = "src/Governance/Propose.idr"
+comment = "Existing propose flow — hook appendEvent(Propose, timestamp) here"
+
+[[codebase_ref]]
+path = "src/Governance/Vote.idr"
+comment = "Existing vote flow — hook appendEvent(Vote, timestamp) here"
+
+[[codebase_ref]]
+path = "src/Governance/Tally.idr"
+comment = "Existing tally flow — hook appendEvent(Tally, timestamp) here"
+
+[[codebase_ref]]
+path = "src/Governance/Execute.idr"
+comment = "Existing execute flow — hook appendEvent(Execute, timestamp) here"
+
+[[codebase_ref]]
+path = "src/Proxy/Router.idr"
+comment = "ERC-7546 selector routing — register getTimeline selector"
+```

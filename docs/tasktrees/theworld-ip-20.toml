@@ -1,0 +1,86 @@
+```toml
+# SPEC:
+# REQ_CANCEL_001 — cancelProposal selector: author can cancel own proposal before voting ends
+# REQ_CANCEL_002 — State transition: proposal moves to Cancelled state, excluded from tally
+# REQ_CANCEL_003 — Access control: only original author can cancel; revert otherwise
+# REQ_CANCEL_004 — Event emission: ProposalCancelled(uint256 proposalId) logged on cancel
+# REQ_CANCEL_005 — Slot freeing: cancelled proposal frees voting slot for new proposals
+
+version = "1.0"
+id = "theworld-ip-20"
+title = "Add cancelProposal to td governance"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+[[codebase_ref]]
+path = "src/Governance/Proposal.idr"
+comment = "Existing proposal state machine and storage layout"
+
+[[codebase_ref]]
+path = "src/Governance/Yul/Proposal.idr"
+comment = "Yul codegen for proposal functions — add cancelProposal here"
+
+[[codebase_ref]]
+path = "src/Governance/Types.idr"
+comment = "ProposalState enum — add Cancelled variant"
+
+[root]
+id = "ip20-root"
+name = "cancelProposal implementation"
+estimate = { hours = 14 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip20-1"
+name = "REQ_CANCEL_002 — Add Cancelled state to ProposalState enum"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Cancelled variant exists in ProposalState", verify = "grep -q 'Cancelled' src/Governance/Types.idr" },
+  { description = "Project compiles with new state", verify = "idris2-yul --check src/Governance/Types.idr" },
+]
+
+[[root.subtasks]]
+id = "ip20-2"
+name = "REQ_CANCEL_001 REQ_CANCEL_003 — Implement cancelProposal logic with author-only guard"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal function exists in Proposal module", verify = "grep -q 'cancelProposal' src/Governance/Proposal.idr" },
+  { description = "Reverts when caller is not author", verify = "grep -q 'revert' src/Governance/Proposal.idr && grep -q 'author' src/Governance/Proposal.idr" },
+  { description = "Only cancels proposals in Active/Pending state", verify = "grep -qE 'Active|Pending' src/Governance/Proposal.idr" },
+]
+
+[[root.subtasks]]
+id = "ip20-3"
+name = "REQ_CANCEL_004 — Yul codegen for cancelProposal selector and ProposalCancelled event"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Yul codegen emits ProposalCancelled event", verify = "grep -q 'ProposalCancelled' src/Governance/Yul/Proposal.idr" },
+  { description = "Selector registered in dispatch table", verify = "grep -q 'cancelProposal' src/Governance/Yul/Dispatch.idr" },
+  { description = "Compiles to Yul output", verify = "idris2-yul --codegen yul src/Governance/Yul/Proposal.idr" },
+]
+
+[[root.subtasks]]
+id = "ip20-4"
+name = "REQ_CANCEL_005 — Exclude cancelled proposals from tally and free voting slot"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Tally skips Cancelled proposals", verify = "grep -q 'Cancelled' src/Governance/Tally.idr" },
+  { description = "Voting slot decremented on cancel", verify = "grep -qE 'slotCount|freeSlot' src/Governance/Proposal.idr" },
+]
+
+[[root.subtasks]]
+id = "ip20-5"
+name = "ERC-7546 proxy registration and end-to-end verification"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "cancelProposal selector mapped via getImplementation(bytes4)", verify = "grep -q 'dc9cc645\\|cancelProposal' src/Proxy/Registry.idr" },
+  { description = "Bytecode compiles via solc strict-assembly", verify = "solc --strict-assembly build/Governance.yul --bin" },
+  { description = "Artifact verification passes", verify = "idris2-yul --verify build/Governance.yul" },
+]
+```

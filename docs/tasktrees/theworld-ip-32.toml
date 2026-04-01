@@ -1,0 +1,85 @@
+```toml
+version = "1.0"
+id = "theworld-ip-32"
+title = "Emergency Pause — DAO全操作の一時停止機能"
+owner = "etherclaw"
+created_at = "2026-04-01"
+family = "evm"
+
+# SPEC:
+# REQ_PAUSE_001: Global pause flag in proxy storage, checked on every delegatecall
+# REQ_PAUSE_002: pause() / unpause() callable only by authorized guardian role
+# REQ_PAUSE_003: whenNotPaused modifier equivalent in Yul (revert if paused)
+# REQ_PAUSE_004: PauseActivated / PauseDeactivated events emitted on state change
+# REQ_PAUSE_005: Integration with ERC-7546 proxy — pause check before getImplementation dispatch
+
+[[codebase_ref]]
+path = "idris2-evm/src/EVM/Yul/Storage.idr"
+comment = "Storage slot layout patterns for global pause flag"
+
+[[codebase_ref]]
+path = "idris2-subcontract/src/ERC7546/Proxy.idr"
+comment = "ERC-7546 proxy dispatch — insert pause guard before getImplementation"
+
+[[codebase_ref]]
+path = "idris2-evm/src/EVM/Yul/Event.idr"
+comment = "Event emission patterns for PauseActivated/PauseDeactivated"
+
+[root]
+id = "ip32-root"
+name = "Emergency Pause: DAO全操作一時停止機能"
+estimate = { hours = 18 }
+checkbox = "unchecked"
+
+[[root.subtasks]]
+id = "ip32-01"
+name = "REQ_PAUSE_001: Global pause storage slot & read/write in Yul"
+estimate = { hours = 3 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Pause storage module compiles", verify = "cd td-contracts && idris2-yul --codegen yul src/Pause/Storage.idr --check" },
+  { description = "Yul output contains sload/sstore for pause slot", verify = "grep -q 'sload\\|sstore' td-contracts/build/Pause/Storage.yul" },
+]
+
+[[root.subtasks]]
+id = "ip32-02"
+name = "REQ_PAUSE_002: Guardian-only pause()/unpause() function pair"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "pause/unpause selectors present in Yul output", verify = "grep -qE '0x8456cb59|0x3f4ba83a' td-contracts/build/Pause/Controller.yul" },
+  { description = "Caller check reverts for non-guardian", verify = "grep -q 'revert' td-contracts/build/Pause/Controller.yul" },
+  { description = "Module compiles cleanly", verify = "cd td-contracts && idris2-yul --codegen yul src/Pause/Controller.idr --check" },
+]
+
+[[root.subtasks]]
+id = "ip32-03"
+name = "REQ_PAUSE_003: whenNotPaused guard inserted into proxy dispatch"
+estimate = { hours = 4 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Proxy Yul contains pause check before delegatecall", verify = "awk '/pause/,/delegatecall/' td-contracts/build/Proxy.yul | grep -q 'revert'" },
+  { description = "Proxy compiles with pause guard", verify = "cd td-contracts && idris2-yul --codegen yul src/Proxy.idr --check" },
+]
+
+[[root.subtasks]]
+id = "ip32-04"
+name = "REQ_PAUSE_004: PauseActivated / PauseDeactivated event emission"
+estimate = { hours = 2 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "Event topic hashes present in Yul", verify = "grep -qE 'log1|log2' td-contracts/build/Pause/Controller.yul" },
+  { description = "Event signatures match keccak256", verify = "cast keccak 'PauseActivated(address)' | grep -qi '0x' && cast keccak 'PauseDeactivated(address)' | grep -qi '0x'" },
+]
+
+[[root.subtasks]]
+id = "ip32-05"
+name = "REQ_PAUSE_005: Bytecode compilation & on-chain verification"
+estimate = { hours = 5 }
+checkbox = "unchecked"
+acceptance = [
+  { description = "solc strict-assembly produces bytecode", verify = "solc --strict-assembly td-contracts/build/Pause/Controller.yul --bin | grep -q '[0-9a-f]'" },
+  { description = "Artifact verification passes", verify = "cd td-contracts && idris2-yul --codegen yul src/Verification/PauseVerify.idr --exec" },
+  { description = "Dry-run deploy succeeds", verify = "etherclaw deploy --dry-run td-contracts/build/Proxy.bin --network base-sepolia" },
+]
+```
