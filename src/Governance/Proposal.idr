@@ -1,85 +1,59 @@
-||| Governance Proposal — td.onthe.eth
-||| REQ_CANCEL_001: cancelProposal selector — author can cancel own proposal
-||| REQ_CANCEL_003: Access control — only original author can cancel; revert otherwise
-||| REQ_CANCEL_005: Slot freeing — cancelled proposal frees voting slot
 module Governance.Proposal
 
-import Governance.Types
-
-%default total
-
--- =============================================================================
--- Cancel Result Type
--- =============================================================================
-
-||| Result of a cancel attempt.
+||| Proposal status lifecycle for TextDAO governance.
+||| A proposal moves through: Pending → Active → (Finalized | Cancelled).
 public export
-data CancelResult
-  = CancelSuccess Proposal
-  | ErrNotAuthor
-  | ErrNotCancellable ProposalState
+data ProposalStatus
+  = Pending
+  | Active
+  | Finalized
+  | Cancelled
 
 public export
-Show CancelResult where
-  show (CancelSuccess p) = "Cancelled proposal #" ++ show p.proposalId
-  show ErrNotAuthor = "revert: caller is not proposal author"
-  show (ErrNotCancellable s) = "revert: proposal status " ++ show s ++ " is not cancellable, require Active or Pending"
+Eq ProposalStatus where
+  Pending   == Pending   = True
+  Active    == Active    = True
+  Finalized == Finalized = True
+  Cancelled == Cancelled = True
+  _         == _         = False
 
--- =============================================================================
--- Slot Management
--- =============================================================================
-
-||| Active voting slot counter.
-||| REQ_CANCEL_005: Tracks how many proposals occupy voting slots.
 public export
-record SlotCounter where
-  constructor MkSlotCounter
-  slotCount : Nat
+Show ProposalStatus where
+  show Pending   = "Pending"
+  show Active    = "Active"
+  show Finalized = "Finalized"
+  show Cancelled = "Cancelled"
 
-||| Free a voting slot when a proposal is cancelled.
-||| REQ_CANCEL_005: Decrements slot count so new proposals can be created.
+||| Encode status as uint8 for EVM storage.
 public export
-freeSlot : SlotCounter -> SlotCounter
-freeSlot (MkSlotCounter Z)     = MkSlotCounter Z
-freeSlot (MkSlotCounter (S n)) = MkSlotCounter n
+statusToUint8 : ProposalStatus -> Int
+statusToUint8 Pending   = 0
+statusToUint8 Active    = 1
+statusToUint8 Finalized = 2
+statusToUint8 Cancelled = 3
 
--- =============================================================================
--- Author Guard
--- =============================================================================
-
-||| Assert that the caller is the proposal author.
-||| REQ_CANCEL_003: Reverts if msg.sender != proposal.author.
+||| Decode uint8 from EVM storage to status.
 public export
-assertAuthor : (caller : EvmAddr) -> (proposal : Proposal) -> Either CancelResult ()
-assertAuthor caller proposal =
-  if caller == proposal.author
-     then Right ()
-     else Left ErrNotAuthor
+uint8ToStatus : Int -> Maybe ProposalStatus
+uint8ToStatus 0 = Just Pending
+uint8ToStatus 1 = Just Active
+uint8ToStatus 2 = Just Finalized
+uint8ToStatus 3 = Just Cancelled
+uint8ToStatus _ = Nothing
 
--- =============================================================================
--- Cancel Logic
--- =============================================================================
-
-||| Cancel a proposal. Checks:
-||| 1. caller == proposal.author (REQ_CANCEL_003)
-||| 2. proposal.status is Active or Pending (REQ_CANCEL_002)
-||| On success, sets status to Cancelled (REQ_CANCEL_001).
-||| Returns updated proposal for slot freeing (REQ_CANCEL_005).
+||| A proposal record stored on-chain.
 public export
-cancelProposal : (caller : EvmAddr) -> Proposal -> CancelResult
-cancelProposal caller proposal =
-  case assertAuthor caller proposal of
-    Left err => err
-    Right () =>
-      if isCancellable proposal.status
-         then CancelSuccess ({ status := Cancelled } proposal)
-         else ErrNotCancellable proposal.status
+record Proposal where
+  constructor MkProposal
+  proposalId : Nat
+  author     : String  -- address as hex string (0x...)
+  status     : ProposalStatus
+  title      : String
 
-||| Cancel proposal and free the voting slot.
-||| REQ_CANCEL_001 + REQ_CANCEL_005: Combined cancel + slot free operation.
+||| Check if a proposal is in a cancellable state.
+||| Only Pending and Active proposals can be cancelled.
 public export
-cancelAndFreeSlot : (caller : EvmAddr) -> Proposal -> SlotCounter -> (CancelResult, SlotCounter)
-cancelAndFreeSlot caller proposal slots =
-  case cancelProposal caller proposal of
-    CancelSuccess p => (CancelSuccess p, freeSlot slots)
-    err             => (err, slots)
+isCancellable : ProposalStatus -> Bool
+isCancellable Pending = True
+isCancellable Active  = True
+isCancellable _       = False
