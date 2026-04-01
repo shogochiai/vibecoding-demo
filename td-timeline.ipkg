@@ -1,0 +1,10 @@
+package td-timeline
+version = "0.1.0"
+
+sourcedir = "src"
+
+depends = evm
+
+modules = Timeline
+        , TimelineStorage
+        , FunctionRegistry
