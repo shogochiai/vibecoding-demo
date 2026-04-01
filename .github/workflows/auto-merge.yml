@@ -1,0 +1,28 @@
+name: Auto Merge
+
+on:
+  workflow_run:
+    workflows: ["TheWorld Governance Gate"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Merge approved PR
+        run: |
+          # workflow_run event carries the PR via pull_requests array
+          PR_NUM=$(echo '${{ toJson(github.event.workflow_run.pull_requests) }}' | jq '.[0].number')
+          if [ "$PR_NUM" = "null" ] || [ -z "$PR_NUM" ]; then
+            echo "No PR associated with this workflow run"
+            exit 0
+          fi
+          echo "Merging PR #$PR_NUM..."
+          gh pr merge $PR_NUM --squash --delete-branch --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

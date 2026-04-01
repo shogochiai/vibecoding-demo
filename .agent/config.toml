@@ -1,0 +1,21 @@
+# EtherClaw Agent Config
+# Tool/LLM-agnostic: Claude Code, Codex, Cursor etc. all read this file.
+# etherclaw daemon reads [models] to set --model flag on LLM CLI calls.
+
+[models]
+architect = "claude-opus-4-6"    # Design, review, TaskTree generation (highest quality)
+executor  = "claude-sonnet-4-6"  # Implementation, coding (speed + quality balance)
+local     = "qwen3.5:2b"         # Local spot-check via ollama (SemanticAudit)
+
+[canisters]
+textdao = "xxxxx-xxxxx-cai"      # TextDAO canister ID (placeholder)
+mmnt    = "xxxxx-xxxxx-cai"      # mmnt canister ID (placeholder)
+
+[tools]
+build   = "pack build etherclaw"
+install = "cp build/exec/etherclaw ~/.local/bin/etherclaw"
+lint    = "pack typecheck etherclaw"
+test    = "pack test etherclaw"
+
+[env]
+OLLAMA_HOST = "http://localhost:11434"

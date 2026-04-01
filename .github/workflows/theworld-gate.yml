@@ -1,0 +1,26 @@
+name: TheWorld Governance Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  governance-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check TheWorld approval
+        run: |
+          echo "Checking TheWorld governance approval..."
+          PR_NUM=${{ github.event.pull_request.number }}
+          # TheWorld bot posts 'governance:approved' label when vote passes
+          LABELS=$(gh pr view $PR_NUM --json labels -q '.labels[].name')
+          if echo "$LABELS" | grep -q 'governance:approved'; then
+            echo "TheWorld governance approved"
+          else
+            echo "ERROR: PR not yet approved by TheWorld governance"
+            echo "Submit a proposal: etherclaw review create $PR_NUM"
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
