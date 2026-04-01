@@ -1,0 +1,23 @@
+# REQ_TIMELINE_005: Deploy configuration for Base Mainnet via t-ECDSA
+[network]
+name = "base"
+chain_id = 8453
+rpc_url = "https://mainnet.base.org"
+
+[signing]
+method = "t-ecdsa"
+key_name = "td_deploy_key"
+
+[artifact]
+source = "build/Timeline.yul"
+compiler = "solc"
+compiler_flags = "--strict-assembly --bin"
+
+[verification]
+explorer = "https://basescan.org"
+api_endpoint = "https://api.basescan.org/api"
+
+[erc7546]
+proxy_address = ""  # Set after proxy deployment
+selector = "0xb3a0a8d0"
+facet_name = "Timeline"
