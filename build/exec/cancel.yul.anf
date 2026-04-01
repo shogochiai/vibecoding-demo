@@ -1,0 +1,79 @@
+{__mainExpression:0} = []: %let v0 = (<{{__mainExpression:0}:0} underapp 1>()) in (PrimIO.unsafePerformIO(v0))
+{{__mainExpression:0}:0} = [0]: TD.Governance.Yul.Cancel.main(v0)
+_builtin.NIL = Constructor tag Just 0 arity 0 newtype by Nothing
+_builtin.CONS = Constructor tag Just 1 arity 2 newtype by Nothing
+_builtin.NOTHING = Constructor tag Just 0 arity 0 newtype by Nothing
+_builtin.JUST = Constructor tag Just 1 arity 1 newtype by Nothing
+prim__sub_Integer = [0, 1]: %op -Integer(v0, v1)
+TD.Governance.Yul.Cancel.requireNotExecuted = [0, 1]: %let v2 = (TD.Governance.Proposal.isFullyExecuted(v0, v1)) in (%case v2 of { %constalt(1) => %let v4 = (18) in (%let v5 = (%let v3 = ("ProposalAlreadyExecuted") in (Subcontract.Core.Evidence.tagEvidence(v3))) in (%con Subcontract.Core.Outcome.Fail(v4, v5)))| %constalt(0) => %con Subcontract.Core.Outcome.Ok(v0) Nothing })
+TD.Governance.Yul.Cancel.requireNotCancelled = [0, 1]: %let v2 = (TD.Governance.Proposal.isProposalCancelled(v0, v1)) in (%case v2 of { %constalt(1) => %let v4 = (18) in (%let v5 = (%let v3 = ("ProposalAlreadyCancelled") in (Subcontract.Core.Evidence.tagEvidence(v3))) in (%con Subcontract.Core.Outcome.Fail(v4, v5)))| %constalt(0) => %con Subcontract.Core.Outcome.Ok(v0) Nothing })
+TD.Governance.Yul.Cancel.requireAuthor = [0, 1, 2]: %let v3 = (TD.Governance.Yul.Cancel.checkAuthor(v0, v1, v2)) in (%case v3 of { %conalt _builtin.JUST(v4) => %con Subcontract.Core.Outcome.Ok(v4)| %conalt _builtin.NOTHING() => %let v6 = (2) in (%let v7 = (%let v5 = ("YouAreNotTheAuthor") in (Subcontract.Core.Evidence.tagEvidence(v5))) in (%con Subcontract.Core.Outcome.Fail(v6, v7))) Nothing })
+TD.Governance.Yul.Cancel.main = [0]: %let v5 = (%let v3 = (%let v1 = (TD.Governance.Yul.Cancel.cancelProposalSig()) in (%let v2 = (TD.Governance.Yul.Cancel.cancelProposalEntry()) in (Subcontract.Core.Entry.entry(v1, v2)))) in (%let v4 = (%con _builtin.NIL()) in (%con _builtin.CONS(v3, v4)))) in (Subcontract.Core.Entry.dispatch(v5, v0))
+TD.Governance.Yul.Cancel.freeSlot = [0, 1]: %let v2 = (0) in (TD.Governance.Proposal.setProposalExpiration(v0, v2, v1))
+TD.Governance.Yul.Cancel.checkAuthor = [0, 1, 2]: %let v3 = (TD.Governance.Proposal.getProposalAuthor(v0, v2)) in (%let v5 = (Prelude.EqOrd.==(v3, v1)) in (%case v5 of { %constalt(1) => %let v4 = (%con _builtin.CONS(v0, v1)) in (%con _builtin.JUST(v4))| %constalt(0) => %con _builtin.NOTHING() Nothing }))
+TD.Governance.Yul.Cancel.cancelWithProof = [0, 1, 2, 3, 4]: %let v5 = (TD.Governance.Proposal.getApprovedHeaderId(v3, v4)) in (%let v19 = (%let v6 = (0) in (Prelude.EqOrd.>(v5, v6))) in (%case v19 of { %constalt(1) => 0| %constalt(0) => %let v7 = (%let v8 = (1) in (TD.Governance.Proposal.setProposalCancelled(v3, v8, v4))) in (%let v9 = (TD.Governance.Yul.Cancel.freeSlot(v3, v4)) in (%let v10 = (TD.Governance.Proposal.getProposalAuthor(v3, v4)) in (%let v11 = (%let v12 = (0) in (EVM.Primitives.mstore(v12, v3, v4))) in (%let v13 = (%let v14 = (32) in (EVM.Primitives.mstore(v14, v10, v4))) in (%let v15 = (%let v16 = (0) in (%let v17 = (64) in (%let v18 = (77224998599736155558143098436089755941908938948529740497550885062050548656827) in (EVM.Primitives.log1(v16, v17, v18, v4))))) in (1)))))) Nothing }))
+TD.Governance.Yul.Cancel.cancelProposalSig = []: %let v4 = ("cancelProposal") in (%let v5 = (%let v0 = (0) in (%let v1 = (%con _builtin.NIL()) in (%con _builtin.CONS(v0, v1)))) in (%let v6 = (%let v2 = (3) in (%let v3 = (%con _builtin.NIL()) in (%con _builtin.CONS(v2, v3)))) in (%con Subcontract.Core.ABI.Sig.MkSig(v4, v5, v6))))
+TD.Governance.Yul.Cancel.cancelProposalEntry = []: %let v0 = (3639050463) in (%let v1 = (<TD.Governance.Yul.Cancel.{cancelProposalEntry:1} underapp 1>()) in (%con _builtin.CONS(v0, v1)))
+TD.Governance.Yul.Cancel.{cancelProposalEntry:1} = [0]: %let v1 = (%let v2 = (<TD.Governance.Yul.Cancel.{cancelProposalEntry:0} underapp 2>()) in (Subcontract.Core.ABI.Decoder.runDecoder(v2, v0))) in (%let v3 = (TD.Governance.Yul.Cancel.cancelProposal(v1, v0)) in (%case v3 of { %conalt Subcontract.Core.Outcome.Ok(v4) => EVM.Primitives.returnBool(v4, v0)| %conalt Subcontract.Core.Outcome.Fail(v5, v6) => %let v7 = (0) in (%let v8 = (0) in (EVM.Primitives.evmRevert(v7, v8, v0))) Nothing }))
+TD.Governance.Yul.Cancel.{cancelProposalEntry:0} = [1, 0]: Subcontract.Core.ABI.Decoder.decodeUint256(v1, v0)
+TD.Governance.Yul.Cancel.cancelProposal = [0, 1]: %let v2 = (EVM.Primitives.caller(v1)) in (%let v3 = (TD.Governance.Yul.Cancel.requireAuthor(v0, v2, v1)) in (%case v3 of { %conalt Subcontract.Core.Outcome.Fail(v4, v5) => %con Subcontract.Core.Outcome.Fail(v4, v5)| %conalt Subcontract.Core.Outcome.Ok(v6) => %let v7 = (TD.Governance.Yul.Cancel.requireNotCancelled(v0, v1)) in (%case v7 of { %conalt Subcontract.Core.Outcome.Fail(v8, v9) => %con Subcontract.Core.Outcome.Fail(v8, v9)| %conalt Subcontract.Core.Outcome.Ok(v10) => %let v11 = (TD.Governance.Yul.Cancel.requireNotExecuted(v0, v1)) in (%case v11 of { %conalt Subcontract.Core.Outcome.Fail(v12, v13) => %con Subcontract.Core.Outcome.Fail(v12, v13)| %conalt Subcontract.Core.Outcome.Ok(v14) => %let v15 = (TD.Governance.Yul.Cancel.cancelWithProof(v6, v10, v14, v0, v1)) in (%case v15 of { %constalt(1) => %let v16 = (1) in (%con Subcontract.Core.Outcome.Ok(v16))| %constalt(0) => %let v18 = (18) in (%let v19 = (%let v17 = ("ProposalAlreadyApproved") in (Subcontract.Core.Evidence.tagEvidence(v17))) in (%con Subcontract.Core.Outcome.Fail(v18, v19))) Nothing }) Nothing }) Nothing }) Nothing }))
+TD.Governance.Proposal.setProposalExpiration = [0, 1, 2]: %let v3 = (TD.Governance.Proposal.getProposalMetaSlot(v0, v2)) in (%let v5 = (%let v4 = (TD.Governance.Proposal.META_OFFSET_EXPIRATION()) in (%op +Integer(v3, v4))) in (EVM.Primitives.sstore(v5, v1, v2)))
+TD.Governance.Proposal.setProposalCancelled = [0, 1, 2]: %let v3 = (TD.Governance.Proposal.getProposalMetaSlot(v0, v2)) in (%let v5 = (%let v4 = (TD.Governance.Proposal.META_OFFSET_CANCELLED()) in (%op +Integer(v3, v4))) in (%let v6 = (%case v1 of { %constalt(1) => 1| %constalt(0) => 0 Nothing }) in (EVM.Primitives.sstore(v5, v6, v2))))
+TD.Governance.Proposal.isProposalCancelled = [0, 1]: %let v2 = (TD.Governance.Proposal.getProposalMetaSlot(v0, v1)) in (%let v3 = (%let v5 = (%let v4 = (TD.Governance.Proposal.META_OFFSET_CANCELLED()) in (%op +Integer(v2, v4))) in (EVM.Primitives.sload(v5, v1))) in (%let v6 = (1) in (Prelude.EqOrd.==(v3, v6))))
+TD.Governance.Proposal.isFullyExecuted = [0, 1]: %let v2 = (TD.Governance.Proposal.getProposalMetaSlot(v0, v1)) in (%let v3 = (%let v5 = (%let v4 = (TD.Governance.Proposal.META_OFFSET_EXECUTED()) in (%op +Integer(v2, v4))) in (EVM.Primitives.sload(v5, v1))) in (%let v6 = (1) in (Prelude.EqOrd.==(v3, v6))))
+TD.Governance.Proposal.getProposalSlot = [0, 1]: %let v2 = (%let v3 = (0) in (EVM.Primitives.mstore(v3, v0, v1))) in (%let v4 = (%let v5 = (32) in (%let v6 = (TD.Governance.Proposal.SLOT_DELIBERATION()) in (EVM.Primitives.mstore(v5, v6, v1)))) in (%let v7 = (0) in (%let v8 = (64) in (EVM.Primitives.keccak256(v7, v8, v1)))))
+TD.Governance.Proposal.getProposalMetaSlot = [0, 1]: %let v2 = (TD.Governance.Proposal.getProposalSlot(v0, v1)) in (%let v3 = (48) in (%op +Integer(v2, v3)))
+TD.Governance.Proposal.getProposalAuthor = [0, 1]: %let v2 = (TD.Governance.Proposal.getProposalMetaSlot(v0, v1)) in (%let v4 = (%let v3 = (TD.Governance.Proposal.META_OFFSET_AUTHOR()) in (%op +Integer(v2, v3))) in (EVM.Primitives.sload(v4, v1)))
+TD.Governance.Proposal.getApprovedHeaderId = [0, 1]: %let v2 = (TD.Governance.Proposal.getProposalMetaSlot(v0, v1)) in (%let v4 = (%let v3 = (TD.Governance.Proposal.META_OFFSET_APPROVED_HEADER()) in (%op +Integer(v2, v3))) in (EVM.Primitives.sload(v4, v1)))
+TD.Governance.Proposal.SLOT_DELIBERATION = []: 4096
+TD.Governance.Proposal.META_OFFSET_EXPIRATION = []: 1
+TD.Governance.Proposal.META_OFFSET_EXECUTED = []: 7
+TD.Governance.Proposal.META_OFFSET_CANCELLED = []: 9
+TD.Governance.Proposal.META_OFFSET_AUTHOR = []: 8
+TD.Governance.Proposal.META_OFFSET_APPROVED_HEADER = []: 5
+EVM.Primitives.sstore = [0, 1, 2]: EVM.Primitives.prim__sstore(v0, v1, v2)
+EVM.Primitives.sload = [0, 1]: EVM.Primitives.prim__sload(v0, v1)
+EVM.Primitives.returnUint = [0, 1]: %let v2 = (%let v3 = (0) in (EVM.Primitives.mstore(v3, v0, v1))) in (%let v4 = (0) in (%let v5 = (32) in (EVM.Primitives.evmReturn(v4, v5, v1))))
+EVM.Primitives.returnBool = [0, 1]: %let v2 = (%case v0 of { %constalt(1) => 1| %constalt(0) => 0 Nothing }) in (EVM.Primitives.returnUint(v2, v1))
+EVM.Primitives.prim__sstore = Foreign call ["evm:sstore"] [Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__sload = Foreign call ["evm:sload"] [Integer, %World] -> IORes Integer
+EVM.Primitives.prim__revert = Foreign call ["evm:revert"] [Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__return = Foreign call ["evm:return"] [Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__mstore = Foreign call ["evm:mstore"] [Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__log1 = Foreign call ["evm:log1"] [Integer, Integer, Integer, %World] -> IORes Unit
+EVM.Primitives.prim__keccak256 = Foreign call ["evm:keccak256"] [Integer, Integer, %World] -> IORes Integer
+EVM.Primitives.prim__caller = Foreign call ["evm:caller"] [%World] -> IORes Integer
+EVM.Primitives.prim__calldataload = Foreign call ["evm:calldataload"] [Integer, %World] -> IORes Integer
+EVM.Primitives.mstore = [0, 1, 2]: EVM.Primitives.prim__mstore(v0, v1, v2)
+EVM.Primitives.log1 = [0, 1, 2, 3]: EVM.Primitives.prim__log1(v0, v1, v2, v3)
+EVM.Primitives.keccak256 = [0, 1, 2]: EVM.Primitives.prim__keccak256(v0, v1, v2)
+EVM.Primitives.getSelector = [0]: %let v1 = (%let v2 = (0) in (EVM.Primitives.calldataload(v2, v0))) in (%let v3 = (26959946667150639794667015087019630673637144422540572481103610249216) in (Prelude.Num.div(v1, v3)))
+EVM.Primitives.evmRevert = [0, 1, 2]: EVM.Primitives.prim__revert(v0, v1, v2)
+EVM.Primitives.evmReturn = [0, 1, 2]: EVM.Primitives.prim__return(v0, v1, v2)
+EVM.Primitives.caller = [0]: EVM.Primitives.prim__caller(v0)
+EVM.Primitives.calldataload = [0, 1]: EVM.Primitives.prim__calldataload(v0, v1)
+Prelude.Types.prim__integerToNat = [0]: %let v2 = (%let v1 = (0) in (%op <=Integer(v1, v0))) in (%case v2 of { %constalt(0) => 0 Just v0 })
+Prelude.Num.div = [0, 1]: %let v4 = (%let v2 = (0) in (Prelude.EqOrd.==(v1, v2))) in (%case v4 of { %constalt(0) => %op /Integer(v0, v1) Just %let v3 = ("Unhandled input for Prelude.Num.case block in div at Prelude.Num:91:3--93:44") in (%op crash([__], v3)) })
+Prelude.EqOrd.compare = [0, 1]: %let v3 = (Prelude.EqOrd.<(v0, v1)) in (%case v3 of { %constalt(1) => 0| %constalt(0) => %let v2 = (Prelude.EqOrd.==(v0, v1)) in (%case v2 of { %constalt(1) => 1| %constalt(0) => 2 Nothing }) Nothing })
+Prelude.EqOrd.> = [0, 1]: %let v2 = (%op >Integer(v0, v1)) in (%case v2 of { %constalt(0) => 0 Just 1 })
+Prelude.EqOrd.== = [0, 1]: %let v2 = (%op ==Integer(v0, v1)) in (%case v2 of { %constalt(0) => 0 Just 1 })
+Prelude.EqOrd.< = [0, 1]: %let v2 = (%op <Integer(v0, v1)) in (%case v2 of { %constalt(0) => 0 Just 1 })
+Prelude.EqOrd.compareInteger = [0, 1]: Prelude.EqOrd.compare(v0, v1)
+PrimIO.unsafePerformIO = [0]: %let v1 = (<PrimIO.{unsafePerformIO:0} underapp 1>(v0)) in (PrimIO.unsafeCreateWorld(v1))
+PrimIO.{unsafePerformIO:0} = [0, 1]: v0 @ (v1)
+PrimIO.unsafeCreateWorld = [0]: %let v1 = (%MkWorld) in (v0 @ (v1))
+Data.List.find = [0, 1]: %case v1 of { %conalt _builtin.NIL() => %con _builtin.NOTHING()| %conalt _builtin.CONS(v2, v3) => %let v4 = (v0 @ (v2)) in (%case v4 of { %constalt(1) => %con _builtin.JUST(v2)| %constalt(0) => Data.List.find(v0, v3) Nothing }) Nothing }
+Subcontract.Core.Outcome.Ok = Constructor tag Just 0 arity 1 newtype by Nothing
+Subcontract.Core.Outcome.Fail = Constructor tag Just 1 arity 2 newtype by Nothing
+Subcontract.Core.Evidence.tagEvidence = [0]: %let v2 = (0) in (%let v3 = (%let v1 = (%con _builtin.NIL()) in (%con _builtin.CONS(v0, v1))) in (%let v4 = (%con _builtin.NIL()) in (%let v5 = (%con _builtin.NIL()) in (%let v6 = (%con _builtin.NIL()) in (%con Subcontract.Core.Evidence.MkEvidence(v2, v3, v4, v5, v6))))))
+Subcontract.Core.Evidence.MkEvidence = Constructor tag Just 0 arity 5 newtype by Nothing
+Subcontract.Core.ABI.Decoder.runDecoder = [0, 1]: %let v2 = (%let v4 = (%let v3 = (4) in (v0 @ (v3))) in (v4 @ (v1))) in (%case v2 of { %conalt _builtin.CONS(v5, v6) => v5 Nothing })
+Subcontract.Core.ABI.Decoder.prim__calldataload = Foreign call ["evm:calldataload"] [Integer, %World] -> IORes Integer
+Subcontract.Core.ABI.Decoder.decodeUint256 = [0, 1]: %let v2 = (Subcontract.Core.ABI.Decoder.calldataload(v0, v1)) in (%let v4 = (%let v3 = (32) in (%op +Integer(v0, v3))) in (%con _builtin.CONS(v2, v4)))
+Subcontract.Core.ABI.Decoder.calldataload = [0, 1]: Subcontract.Core.ABI.Decoder.prim__calldataload(v0, v1)
+Subcontract.Core.ABI.Sig.MkSig = Constructor tag Just 0 arity 3 newtype by Nothing
+Subcontract.Core.Entry.someEntrySelector = [0]: %case v0 of { %conalt _builtin.CONS(v1, v2) => %case v2 of { %conalt _builtin.CONS(v3, v4) => v3 Nothing } Nothing }
+Subcontract.Core.Entry.someEntryHandler = [0]: %case v0 of { %conalt _builtin.CONS(v1, v2) => %case v2 of { %conalt _builtin.CONS(v3, v4) => v4 Nothing } Nothing }
+Subcontract.Core.Entry.entry = [0, 1]: %con _builtin.CONS(v0, v1)
+Subcontract.Core.Entry.dispatch = [0, 1]: %let v2 = (EVM.Primitives.getSelector(v1)) in (%let v8 = (%let v3 = (<Subcontract.Core.Entry.{dispatch:0} underapp 1>(v2)) in (Data.List.find(v3, v0))) in (%case v8 of { %conalt _builtin.NOTHING() => %let v4 = (0) in (%let v5 = (0) in (EVM.Primitives.evmRevert(v4, v5, v1)))| %conalt _builtin.JUST(v6) => %let v7 = (Subcontract.Core.Entry.someEntryHandler(v6)) in (v7 @ (v1)) Nothing }))
+Subcontract.Core.Entry.{dispatch:0} = [0, 1]: %let v2 = (Subcontract.Core.Entry.someEntrySelector(v1)) in (Prelude.EqOrd.==(v2, v0))

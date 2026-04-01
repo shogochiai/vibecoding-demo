@@ -57,3 +57,51 @@ isCancellable : ProposalStatus -> Bool
 isCancellable Pending = True
 isCancellable Active  = True
 isCancellable _       = False
+
+-- =============================================================================
+-- Cancel Logic (REQ_CANCEL_001, REQ_CANCEL_003)
+-- =============================================================================
+
+||| Result of a cancel attempt.
+public export
+data CancelResult
+  = CancelOk Proposal
+  | CancelRevertNotAuthor
+  | CancelRevertNotCancellable ProposalStatus
+
+public export
+Show CancelResult where
+  show (CancelOk p) = "Cancelled proposal #" ++ show p.proposalId
+  show CancelRevertNotAuthor = "revert: caller is not proposal author"
+  show (CancelRevertNotCancellable s) = "revert: proposal status " ++ show s ++ " not Active or Pending"
+
+||| Cancel a proposal. Author-only guard with revert semantics.
+||| REQ_CANCEL_001: author can cancel own proposal before voting ends
+||| REQ_CANCEL_003: only original author can cancel; revert otherwise
+public export
+cancelProposal : (caller : String) -> Proposal -> CancelResult
+cancelProposal caller proposal =
+  if caller /= proposal.author
+     then CancelRevertNotAuthor  -- revert if not author
+     else if isCancellable proposal.status
+       then CancelOk ({ status := Cancelled } proposal)
+       else CancelRevertNotCancellable proposal.status
+
+-- =============================================================================
+-- Slot Management (REQ_CANCEL_005)
+-- =============================================================================
+
+||| Track active slot count for voting slot management.
+||| REQ_CANCEL_005: cancelled proposal frees voting slot for new proposals.
+public export
+record SlotTracker where
+  constructor MkSlotTracker
+  slotCount : Nat
+
+||| Decrement active slot count when a proposal is cancelled (freeSlot).
+public export
+freeSlot : SlotTracker -> SlotTracker
+freeSlot tracker =
+  case tracker.slotCount of
+    Z   => tracker
+    S n => { slotCount := n } tracker
