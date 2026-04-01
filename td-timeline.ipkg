@@ -1,0 +1,32 @@
+package td-timeline
+version = "0.1.0"
+
+sourcedir = "src"
+
+depends = idris2-evm, idris2-subcontract
+
+modules = Timeline
+        , TimelineStorage
+        , FunctionRegistry
+        , Governance.Proposal
+        , Governance.Types
+        , Governance.Events
+        , Governance.Cancel
+        , Governance.Tally
+        , Governance.Selectors
+        , Governance.Yul.Proposal
+        , Governance.Yul.Dispatch
+        , ERC7546.Proxy
+        , Proxy.Registry
+        , TD.Governance.Proposal
+        , TD.Governance.Yul.Cancel
+        , TD.Governance.Yul.Tally
+        , TD.Proxy.Router
+        , Delegation.Types
+        , Delegation.Events
+        , Delegation.Selectors
+        , TD.Delegation.Storage
+        , TD.Delegation.Yul.Delegate
+        , TD.Delegation.Yul.Revoke
+        , TD.Delegation.Yul.View
+        , Deploy.Delegation
