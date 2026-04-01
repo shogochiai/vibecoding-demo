@@ -4,10 +4,7 @@
 module Timeline
 
 import TimelineStorage
-import EVM
 import EVM.Primitives
-import EVM.Storage
-import EVM.ABI
 
 %default total
 
@@ -21,7 +18,7 @@ public export
 record ProposalEvent where
   constructor MkProposalEvent
   eventType : EventType
-  timestamp : Bits256
+  timestamp : Integer
 
 ||| Full timeline: fixed 4-element array of ProposalEvent
 ||| A zero timestamp means the event has not occurred yet
@@ -38,13 +35,13 @@ record ProposalTimeline where
 ----------------------------------------------------------------------
 
 ||| Load a single event timestamp from storage
-loadEventTimestamp : Bits256 -> EventType -> EVM Bits256
+loadEventTimestamp : Integer -> EventType -> IO Integer
 loadEventTimestamp proposalId evt = do
   let slot = eventSlot proposalId evt
   sload slot
 
 ||| Build full timeline for a proposal by reading storage slots
-buildTimeline : Bits256 -> EVM ProposalTimeline
+buildTimeline : Integer -> IO ProposalTimeline
 buildTimeline proposalId = do
   tPropose <- loadEventTimestamp proposalId Propose
   tVote    <- loadEventTimestamp proposalId Vote
@@ -58,30 +55,29 @@ buildTimeline proposalId = do
 
 ||| ABI-encode a ProposalTimeline as 8 words:
 ||| (eventType0, timestamp0, eventType1, timestamp1, ..., eventType3, timestamp3)
-encodeTimeline : ProposalTimeline -> EVM ()
+encodeTimeline : ProposalTimeline -> IO ()
 encodeTimeline tl = do
-  let base = the Bits256 0
   -- Event 0: Propose
-  mstore base (eventIndex $ tl.proposeEvent.eventType)
-  mstore (base + 32) tl.proposeEvent.timestamp
+  mstore 0 (eventIndex $ tl.proposeEvent.eventType)
+  mstore 32 tl.proposeEvent.timestamp
   -- Event 1: Vote
-  mstore (base + 64) (eventIndex $ tl.voteEvent.eventType)
-  mstore (base + 96) tl.voteEvent.timestamp
+  mstore 64 (eventIndex $ tl.voteEvent.eventType)
+  mstore 96 tl.voteEvent.timestamp
   -- Event 2: Tally
-  mstore (base + 128) (eventIndex $ tl.tallyEvent.eventType)
-  mstore (base + 160) tl.tallyEvent.timestamp
+  mstore 128 (eventIndex $ tl.tallyEvent.eventType)
+  mstore 160 tl.tallyEvent.timestamp
   -- Event 3: Execute
-  mstore (base + 192) (eventIndex $ tl.executeEvent.eventType)
-  mstore (base + 224) tl.executeEvent.timestamp
+  mstore 192 (eventIndex $ tl.executeEvent.eventType)
+  mstore 224 tl.executeEvent.timestamp
   -- Return 256 bytes from memory offset 0
-  evm_return base 256
+  evmReturn 0 256
 
 ||| getProposalTimeline(uint256 proposalId) view returns ((uint8,uint256)[4])
 ||| Selector: 0xb3a0a8d0 = keccak256("getProposalTimeline(uint256)")
 export
-getProposalTimeline : EVM ()
+getProposalTimeline : IO ()
 getProposalTimeline = do
-  let proposalId = calldataload 4
+  proposalId <- calldataload 4
   tl <- buildTimeline proposalId
   encodeTimeline tl
 
@@ -92,15 +88,14 @@ getProposalTimeline = do
 ||| Function selector dispatch
 ||| 0xb3a0a8d0 = getProposalTimeline(uint256)
 export
-dispatch : EVM ()
+dispatch : IO ()
 dispatch = do
-  let selector = shr 224 (calldataload 0)
+  selector <- getSelector
   if selector == 0xb3a0a8d0
     then getProposalTimeline
-    else revert 0 0
+    else evmRevert 0 0
 
 ||| Main entry — EVM contract entry point for Yul codegen
-%foreign "evm:main"
 export
-main : EVM ()
+main : IO ()
 main = dispatch

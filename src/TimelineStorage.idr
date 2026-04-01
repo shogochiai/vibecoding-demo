@@ -3,9 +3,6 @@
 ||| Slots are computed deterministically from proposal ID and event type.
 module TimelineStorage
 
-import EVM
-import EVM.Primitives
-
 %default total
 
 ----------------------------------------------------------------------
@@ -18,7 +15,7 @@ data EventType = Propose | Vote | Tally | Execute
 
 ||| Numeric index for each event type used in slot computation
 public export
-eventIndex : EventType -> Bits256
+eventIndex : EventType -> Integer
 eventIndex Propose = 0
 eventIndex Vote    = 1
 eventIndex Tally   = 2
@@ -32,28 +29,22 @@ eventIndex Execute = 3
 ||| Derived from keccak256("td.timeline.v1") to avoid collisions
 ||| with other ERC-7546 facets.
 public export
-timelineBaseSlot : Bits256
+timelineBaseSlot : Integer
 timelineBaseSlot = 0x8a35acfbc15ff81a39ae7d344fd709f28e8600b4aa8c65c6b64bfe7fe36bd19b
 
 ||| Compute the storage slot for a specific event timestamp.
 |||
-||| Layout: slot = keccak256(proposalId . eventIndex . timelineBaseSlot)
-||| This follows the mapping(uint256 => mapping(uint256 => uint256)) pattern
-||| where the outer key is proposalId and inner key is eventIndex.
-|||
-||| In practice, we compute:
-|||   slot = timelineBaseSlot + (proposalId * 4) + eventIndex
-|||
+||| Layout: slot = timelineBaseSlot + (proposalId * 4) + eventIndex
 ||| This linear layout is gas-efficient for sequential reads of all 4 events.
 |||
 ||| @proposalId The proposal identifier
 ||| @evt The lifecycle event type
 public export
-eventSlot : Bits256 -> EventType -> Bits256
+eventSlot : Integer -> EventType -> Integer
 eventSlot proposalId evt =
   timelineBaseSlot + (proposalId * 4) + eventIndex evt
 
 ||| Number of storage slots per proposal (one per event type)
 public export
-slotsPerProposal : Bits256
+slotsPerProposal : Integer
 slotsPerProposal = 4
