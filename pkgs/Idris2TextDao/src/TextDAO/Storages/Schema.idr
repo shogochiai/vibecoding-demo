@@ -1,0 +1,802 @@
+||| TextDAO Storage Schema
+||| Idris2 port of textdao-monorepo/packages/contracts/src/textdao/storages/Schema.sol
+|||
+||| Defines core data structures for deliberation, proposals, voting, and members
+|||
+||| Now uses Subcontract.Core.Storable for type-safe storage access.
+module TextDAO.Storages.Schema
+
+import public Data.Vect
+import public Subcontract.Core.Storable
+import public Subcontract.Core.Schema
+
+-- =============================================================================
+-- EVM Primitives (re-exported from Storable via EVM.Primitives)
+-- =============================================================================
+
+-- sload, sstore, mstore, keccak256 are now imported from Subcontract.Core.Storable
+-- which re-exports them from EVM.Primitives
+
+-- =============================================================================
+-- Type Aliases
+-- =============================================================================
+
+||| IPFS Content Identifier (stored as keccak256 hash of CID string)
+public export
+MetadataCid : Type
+MetadataCid = Integer
+
+||| Ethereum address (20 bytes, stored as Integer)
+||| Named EvmAddr to avoid conflict with Decoder.Address
+public export
+EvmAddr : Type
+EvmAddr = Integer
+
+||| Proposal ID
+public export
+ProposalId : Type
+ProposalId = Integer
+
+||| Header ID within a proposal
+public export
+HeaderId : Type
+HeaderId = Integer
+
+||| Command ID within a proposal
+public export
+CommandId : Type
+CommandId = Integer
+
+||| Tag ID
+public export
+TagId : Type
+TagId = Integer
+
+||| Timestamp (Unix epoch seconds)
+public export
+Timestamp : Type
+Timestamp = Integer
+
+-- =============================================================================
+-- Action Status Enum
+-- =============================================================================
+
+||| Status of an action within a command
+public export
+data ActionStatus = Pending | Executed | Failed
+
+export
+actionStatusToInt : ActionStatus -> Integer
+actionStatusToInt Pending = 0
+actionStatusToInt Executed = 1
+actionStatusToInt Failed = 2
+
+export
+intToActionStatus : Integer -> ActionStatus
+intToActionStatus 1 = Executed
+intToActionStatus 2 = Failed
+intToActionStatus _ = Pending
+
+-- =============================================================================
+-- Storable Records (Type-Safe Storage Abstraction)
+-- =============================================================================
+
+||| Member record: addr + metadata (2 slots)
+||| Mirrors Solidity: struct Member { address addr; bytes32 metadata; }
+public export
+record MemberRecord where
+  constructor MkMember
+  memberAddr : Bits256
+  memberMeta : Bits256
+
+public export
+Storable MemberRecord where
+  slotCount = 2
+  toSlots m = [m.memberAddr, m.memberMeta]
+  fromSlots [a, m] = MkMember a m
+
+||| Vote record: 3 ranked headers + 3 ranked commands (6 slots)
+||| Mirrors Solidity: struct Vote { uint256[3] rankedHeaders; uint256[3] rankedCmds; }
+public export
+record VoteRecord where
+  constructor MkVote
+  rankedHeader0 : Bits256
+  rankedHeader1 : Bits256
+  rankedHeader2 : Bits256
+  rankedCmd0 : Bits256
+  rankedCmd1 : Bits256
+  rankedCmd2 : Bits256
+
+public export
+Storable VoteRecord where
+  slotCount = 6
+  toSlots v = [v.rankedHeader0, v.rankedHeader1, v.rankedHeader2,
+               v.rankedCmd0, v.rankedCmd1, v.rankedCmd2]
+  fromSlots [h0, h1, h2, c0, c1, c2] = MkVote h0 h1 h2 c0 c1 c2
+
+||| ProposalMeta record: metadata about a proposal (8 slots)
+public export
+record ProposalMeta where
+  constructor MkProposalMeta
+  createdAt : Bits256
+  expirationTime : Bits256
+  snapInterval : Bits256
+  headerCount : Bits256
+  cmdCount : Bits256
+  approvedHeader : Bits256
+  approvedCmd : Bits256
+  fullyExecuted : Bits256
+
+public export
+Storable ProposalMeta where
+  slotCount = 8
+  toSlots p = [p.createdAt, p.expirationTime, p.snapInterval,
+               p.headerCount, p.cmdCount, p.approvedHeader,
+               p.approvedCmd, p.fullyExecuted]
+  fromSlots [a, b, c, d, e, f, g, h] = MkProposalMeta a b c d e f g h
+
+-- =============================================================================
+-- Storage Slot Layout (ERC-7201 Namespaced)
+-- =============================================================================
+
+||| Base storage slot for Deliberation
+||| keccak256("textdao.deliberation") - 1
+export
+SLOT_DELIBERATION : Integer
+SLOT_DELIBERATION = 0x1000
+
+||| Base storage slot for Texts
+export
+SLOT_TEXTS : Integer
+SLOT_TEXTS = 0x2000
+
+||| Base storage slot for Members
+export
+SLOT_MEMBERS : Integer
+SLOT_MEMBERS = 0x3000
+
+||| Base storage slot for Tags
+export
+SLOT_TAGS : Integer
+SLOT_TAGS = 0x4000
+
+||| Base storage slot for Admins
+export
+SLOT_ADMINS : Integer
+SLOT_ADMINS = 0x5000
+
+||| Storage slot for proposal count
+export
+SLOT_PROPOSAL_COUNT : Integer
+SLOT_PROPOSAL_COUNT = 0x1001
+
+||| Storage slot for member count
+export
+SLOT_MEMBER_COUNT : Integer
+SLOT_MEMBER_COUNT = 0x3001
+
+||| Storage slot for text count
+export
+SLOT_TEXT_COUNT : Integer
+SLOT_TEXT_COUNT = 0x2001
+
+-- =============================================================================
+-- DeliberationConfig Storage Layout
+-- =============================================================================
+
+||| Slot offsets within DeliberationConfig
+||| Config is stored at SLOT_DELIBERATION + 0x100
+export
+SLOT_CONFIG_EXPIRY_DURATION : Integer
+SLOT_CONFIG_EXPIRY_DURATION = 0x1100
+
+export
+SLOT_CONFIG_SNAP_INTERVAL : Integer
+SLOT_CONFIG_SNAP_INTERVAL = 0x1101
+
+export
+SLOT_CONFIG_REPS_NUM : Integer
+SLOT_CONFIG_REPS_NUM = 0x1102
+
+export
+SLOT_CONFIG_QUORUM_SCORE : Integer
+SLOT_CONFIG_QUORUM_SCORE = 0x1103
+
+-- =============================================================================
+-- Storage Slot Calculation Helpers
+-- =============================================================================
+
+||| Calculate storage slot for proposal by ID
+||| slot = keccak256(pid . SLOT_DELIBERATION)
+export
+getProposalSlot : ProposalId -> IO Integer
+getProposalSlot pid = do
+  mstore 0 pid
+  mstore 32 SLOT_DELIBERATION
+  keccak256 0 64
+
+||| Calculate storage slot for proposal's header array
+||| slot = keccak256(pid . SLOT_DELIBERATION) + 0x10
+export
+getProposalHeadersSlot : ProposalId -> IO Integer
+getProposalHeadersSlot pid = do
+  baseSlot <- getProposalSlot pid
+  pure (baseSlot + 0x10)
+
+||| Calculate storage slot for specific header
+||| slot = keccak256(headerId . getProposalHeadersSlot(pid))
+export
+getHeaderSlot : ProposalId -> HeaderId -> IO Integer
+getHeaderSlot pid hid = do
+  headersSlot <- getProposalHeadersSlot pid
+  mstore 0 hid
+  mstore 32 headersSlot
+  keccak256 0 64
+
+||| Calculate storage slot for proposal's command array
+||| slot = keccak256(pid . SLOT_DELIBERATION) + 0x20
+export
+getProposalCommandsSlot : ProposalId -> IO Integer
+getProposalCommandsSlot pid = do
+  baseSlot <- getProposalSlot pid
+  pure (baseSlot + 0x20)
+
+||| Calculate storage slot for proposal's meta
+||| slot = keccak256(pid . SLOT_DELIBERATION) + 0x30
+export
+getProposalMetaSlot : ProposalId -> IO Integer
+getProposalMetaSlot pid = do
+  baseSlot <- getProposalSlot pid
+  pure (baseSlot + 0x30)
+
+||| Calculate storage slot for a vote by representative address
+||| slot = keccak256(repAddr . getProposalMetaSlot(pid) + 0x10)
+export
+getVoteSlot : ProposalId -> EvmAddr -> IO Integer
+getVoteSlot pid repAddr = do
+  metaSlot <- getProposalMetaSlot pid
+  let votesBaseSlot = metaSlot + 0x10
+  mstore 0 repAddr
+  mstore 32 votesBaseSlot
+  keccak256 0 64
+
+||| Calculate storage slot for member by index
+||| slot = keccak256(index . SLOT_MEMBERS)
+export
+getMemberSlot : Integer -> IO Integer
+getMemberSlot index = do
+  mstore 0 index
+  mstore 32 SLOT_MEMBERS
+  keccak256 0 64
+
+||| Calculate storage slot for text by index
+||| slot = keccak256(index . SLOT_TEXTS)
+export
+getTextSlot : Integer -> IO Integer
+getTextSlot index = do
+  mstore 0 index
+  mstore 32 SLOT_TEXTS
+  keccak256 0 64
+
+-- =============================================================================
+-- Storage Read/Write Helpers
+-- =============================================================================
+
+||| Get proposal count
+export
+getProposalCount : IO Integer
+getProposalCount = sload SLOT_PROPOSAL_COUNT
+
+||| Set proposal count
+export
+setProposalCount : Integer -> IO ()
+setProposalCount = sstore SLOT_PROPOSAL_COUNT
+
+||| Get member count
+export
+getMemberCount : IO Integer
+getMemberCount = sload SLOT_MEMBER_COUNT
+
+||| Set member count
+export
+setMemberCount : Integer -> IO ()
+setMemberCount = sstore SLOT_MEMBER_COUNT
+
+||| Get text count
+export
+getTextCount : IO Integer
+getTextCount = sload SLOT_TEXT_COUNT
+
+||| Set text count
+export
+setTextCount : Integer -> IO ()
+setTextCount = sstore SLOT_TEXT_COUNT
+
+-- =============================================================================
+-- Deliberation Config Read/Write
+-- =============================================================================
+
+||| Get expiry duration (seconds)
+export
+getExpiryDuration : IO Integer
+getExpiryDuration = sload SLOT_CONFIG_EXPIRY_DURATION
+
+||| Set expiry duration
+export
+setExpiryDuration : Integer -> IO ()
+setExpiryDuration = sstore SLOT_CONFIG_EXPIRY_DURATION
+
+||| Get snapshot interval
+export
+getSnapInterval : IO Integer
+getSnapInterval = sload SLOT_CONFIG_SNAP_INTERVAL
+
+||| Set snapshot interval
+export
+setSnapInterval : Integer -> IO ()
+setSnapInterval = sstore SLOT_CONFIG_SNAP_INTERVAL
+
+||| Get number of representatives
+export
+getRepsNum : IO Integer
+getRepsNum = sload SLOT_CONFIG_REPS_NUM
+
+||| Set number of representatives
+export
+setRepsNum : Integer -> IO ()
+setRepsNum = sstore SLOT_CONFIG_REPS_NUM
+
+||| Get quorum score
+export
+getQuorumScore : IO Integer
+getQuorumScore = sload SLOT_CONFIG_QUORUM_SCORE
+
+||| Set quorum score
+export
+setQuorumScore : Integer -> IO ()
+setQuorumScore = sstore SLOT_CONFIG_QUORUM_SCORE
+
+-- =============================================================================
+-- Proposal Meta Field Offsets
+-- =============================================================================
+
+||| Offset for createdAt within proposal meta
+export
+META_OFFSET_CREATED_AT : Integer
+META_OFFSET_CREATED_AT = 0
+
+||| Offset for expirationTime
+export
+META_OFFSET_EXPIRATION : Integer
+META_OFFSET_EXPIRATION = 1
+
+||| Offset for snapInterval
+export
+META_OFFSET_SNAP_INTERVAL : Integer
+META_OFFSET_SNAP_INTERVAL = 2
+
+||| Offset for headerCount
+export
+META_OFFSET_HEADER_COUNT : Integer
+META_OFFSET_HEADER_COUNT = 3
+
+||| Offset for commandCount
+export
+META_OFFSET_CMD_COUNT : Integer
+META_OFFSET_CMD_COUNT = 4
+
+||| Offset for approvedHeaderId
+export
+META_OFFSET_APPROVED_HEADER : Integer
+META_OFFSET_APPROVED_HEADER = 5
+
+||| Offset for approvedCommandId
+export
+META_OFFSET_APPROVED_CMD : Integer
+META_OFFSET_APPROVED_CMD = 6
+
+||| Offset for fullyExecuted flag
+export
+META_OFFSET_EXECUTED : Integer
+META_OFFSET_EXECUTED = 7
+
+||| Offset for proposal author address
+export
+META_OFFSET_AUTHOR : Integer
+META_OFFSET_AUTHOR = 8
+
+||| Offset for cancelled flag
+export
+META_OFFSET_CANCELLED : Integer
+META_OFFSET_CANCELLED = 9
+
+-- =============================================================================
+-- Proposal Meta Read/Write
+-- =============================================================================
+
+||| Get proposal creation timestamp
+export
+getProposalCreatedAt : ProposalId -> IO Timestamp
+getProposalCreatedAt pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + META_OFFSET_CREATED_AT)
+
+||| Set proposal creation timestamp
+export
+setProposalCreatedAt : ProposalId -> Timestamp -> IO ()
+setProposalCreatedAt pid ts = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_CREATED_AT) ts
+
+||| Get proposal expiration time
+export
+getProposalExpiration : ProposalId -> IO Timestamp
+getProposalExpiration pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + META_OFFSET_EXPIRATION)
+
+||| Set proposal expiration time
+export
+setProposalExpiration : ProposalId -> Timestamp -> IO ()
+setProposalExpiration pid ts = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_EXPIRATION) ts
+
+||| Get header count for proposal
+export
+getProposalHeaderCount : ProposalId -> IO Integer
+getProposalHeaderCount pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + META_OFFSET_HEADER_COUNT)
+
+||| Set header count for proposal
+export
+setProposalHeaderCount : ProposalId -> Integer -> IO ()
+setProposalHeaderCount pid count = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_HEADER_COUNT) count
+
+||| Get command count for proposal
+export
+getProposalCmdCount : ProposalId -> IO Integer
+getProposalCmdCount pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + META_OFFSET_CMD_COUNT)
+
+||| Set command count for proposal
+export
+setProposalCmdCount : ProposalId -> Integer -> IO ()
+setProposalCmdCount pid count = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_CMD_COUNT) count
+
+||| Get approved header ID
+export
+getApprovedHeaderId : ProposalId -> IO HeaderId
+getApprovedHeaderId pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + META_OFFSET_APPROVED_HEADER)
+
+||| Set approved header ID
+export
+setApprovedHeaderId : ProposalId -> HeaderId -> IO ()
+setApprovedHeaderId pid hid = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_APPROVED_HEADER) hid
+
+||| Get approved command ID
+export
+getApprovedCmdId : ProposalId -> IO CommandId
+getApprovedCmdId pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + META_OFFSET_APPROVED_CMD)
+
+||| Set approved command ID
+export
+setApprovedCmdId : ProposalId -> CommandId -> IO ()
+setApprovedCmdId pid cid = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_APPROVED_CMD) cid
+
+||| Check if proposal is fully executed
+export
+isFullyExecuted : ProposalId -> IO Bool
+isFullyExecuted pid = do
+  metaSlot <- getProposalMetaSlot pid
+  val <- sload (metaSlot + META_OFFSET_EXECUTED)
+  pure (val == 1)
+
+||| Set fully executed flag
+export
+setFullyExecuted : ProposalId -> Bool -> IO ()
+setFullyExecuted pid executed = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_EXECUTED) (if executed then 1 else 0)
+
+||| Get proposal author address
+export
+getProposalAuthor : ProposalId -> IO EvmAddr
+getProposalAuthor pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + META_OFFSET_AUTHOR)
+
+||| Set proposal author address
+export
+setProposalAuthor : ProposalId -> EvmAddr -> IO ()
+setProposalAuthor pid author = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_AUTHOR) author
+
+||| Check if proposal is cancelled
+export
+isProposalCancelled : ProposalId -> IO Bool
+isProposalCancelled pid = do
+  metaSlot <- getProposalMetaSlot pid
+  val <- sload (metaSlot + META_OFFSET_CANCELLED)
+  pure (val == 1)
+
+||| Set cancelled flag
+export
+setProposalCancelled : ProposalId -> Bool -> IO ()
+setProposalCancelled pid cancelled = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + META_OFFSET_CANCELLED) (if cancelled then 1 else 0)
+
+-- =============================================================================
+-- StorageCap-aware versions (for capability-based access)
+-- =============================================================================
+
+||| Get member count (capability-aware)
+export
+getMemberCountCap : (sloadCap : Integer -> IO Integer) -> IO Integer
+getMemberCountCap sloadCap = sloadCap SLOT_MEMBER_COUNT
+
+||| Set member count (capability-aware)
+export
+setMemberCountCap : (sstoreCap : Integer -> Integer -> IO ()) -> Integer -> IO ()
+setMemberCountCap sstoreCap val = sstoreCap SLOT_MEMBER_COUNT val
+
+||| Calculate storage slot for member by index (capability-aware)
+export
+getMemberSlotCap : (mstoreCap : Integer -> Integer -> IO ())
+                -> (keccak256Cap : Integer -> Integer -> IO Integer)
+                -> Integer -> IO Integer
+getMemberSlotCap mstoreCap keccak256Cap index = do
+  mstoreCap 0 index
+  mstoreCap 32 SLOT_MEMBERS
+  keccak256Cap 0 64
+
+-- =============================================================================
+-- Type-Safe Ref Accessors (Storable Integration)
+-- =============================================================================
+
+||| Get a typed Ref to a member by index
+||| Usage:
+|||   ref <- getMemberRef 0
+|||   member <- get ref  -- Returns MemberRecord
+export
+getMemberRef : Integer -> IO (Ref MemberRecord)
+getMemberRef index = do
+  slot <- getMemberSlot index
+  pure (MkRef slot)
+
+||| Get a typed Ref to a vote by proposal ID and voter address
+||| Usage:
+|||   ref <- getVoteRef pid voterAddr
+|||   vote <- get ref  -- Returns VoteRecord
+export
+getVoteRef : ProposalId -> EvmAddr -> IO (Ref VoteRecord)
+getVoteRef pid voter = do
+  slot <- getVoteSlot pid voter
+  pure (MkRef slot)
+
+||| Get a typed Ref to proposal metadata
+||| Usage:
+|||   ref <- getProposalMetaRef pid
+|||   meta <- get ref  -- Returns ProposalMeta
+export
+getProposalMetaRef : ProposalId -> IO (Ref ProposalMeta)
+getProposalMetaRef pid = do
+  slot <- getProposalMetaSlot pid
+  pure (MkRef slot)
+
+-- =============================================================================
+-- Schema Definitions (Declarative Storage Layout)
+-- =============================================================================
+
+||| Member schema using Subcontract.Core.Schema
+||| Fields: memberCount, members array, isMember mapping
+export
+MemberSchema : Schema
+MemberSchema = MkSchema "textdao.members" SLOT_MEMBERS
+  [ Value "memberCount" TUint256
+  , Array "members" TAddress  -- Actually MemberRecord, but Schema uses primitive types
+  , Mapping "isMember" TAddress TBool
+  ]
+
+||| Deliberation schema
+||| Fields: proposalCount, config, proposals mapping
+export
+DeliberationSchema : Schema
+DeliberationSchema = MkSchema "textdao.deliberation" SLOT_DELIBERATION
+  [ Value "proposalCount" TUint256
+  , Value "expiryDuration" TUint256
+  , Value "snapInterval" TUint256
+  , Value "repsNum" TUint256
+  , Value "quorumScore" TUint256
+  ]
+
+||| Text schema
+||| Fields: textCount, texts array
+export
+TextSchema : Schema
+TextSchema = MkSchema "textdao.texts" SLOT_TEXTS
+  [ Value "textCount" TUint256
+  , Array "texts" TBytes32
+  ]
+
+-- =============================================================================
+-- Delegation Storage Layout (ERC-7201 Namespaced)
+-- =============================================================================
+
+||| Base storage slot for Delegation
+||| keccak256("textdao.delegation") - 1
+export
+SLOT_DELEGATION : Integer
+SLOT_DELEGATION = 0x6000
+
+||| Storage slot for delegation mapping: delegator => delegatee
+||| slot = keccak256(delegatorAddr . SLOT_DELEGATION)
+export
+SLOT_DELEGATE_MAPPING : Integer
+SLOT_DELEGATE_MAPPING = 0x6001
+
+||| Storage slot for accumulated voting power: address => uint256
+||| slot = keccak256(addr . SLOT_VOTING_POWER)
+export
+SLOT_VOTING_POWER : Integer
+SLOT_VOTING_POWER = 0x6002
+
+||| Delegation record: delegatee address + active flag (2 slots)
+||| Mirrors: struct DelegateMapping { address delegatee; uint256 isActive; }
+public export
+record DelegateMapping where
+  constructor MkDelegateMapping
+  delegatee : Bits256
+  isActive  : Bits256
+
+public export
+Storable DelegateMapping where
+  slotCount = 2
+  toSlots d = [d.delegatee, d.isActive]
+  fromSlots [a, b] = MkDelegateMapping a b
+
+||| Calculate storage slot for delegation mapping by delegator address
+||| slot = keccak256(delegatorAddr . SLOT_DELEGATE_MAPPING)
+export
+getDelegationSlot : EvmAddr -> IO Integer
+getDelegationSlot delegator = do
+  mstore 0 delegator
+  mstore 32 SLOT_DELEGATE_MAPPING
+  keccak256 0 64
+
+||| Calculate storage slot for voting power by address
+||| slot = keccak256(addr . SLOT_VOTING_POWER)
+export
+getVotingPowerSlot : EvmAddr -> IO Integer
+getVotingPowerSlot addr = do
+  mstore 0 addr
+  mstore 32 SLOT_VOTING_POWER
+  keccak256 0 64
+
+||| Get a typed Ref to a delegation record by delegator address
+export
+getDelegationRef : EvmAddr -> IO (Ref DelegateMapping)
+getDelegationRef delegator = do
+  slot <- getDelegationSlot delegator
+  pure (MkRef slot)
+
+||| Get delegatee address for a delegator
+export
+getDelegatee : EvmAddr -> IO EvmAddr
+getDelegatee delegator = do
+  slot <- getDelegationSlot delegator
+  sload slot
+
+||| Check if delegation is active for a delegator
+export
+isDelegationActive : EvmAddr -> IO Bool
+isDelegationActive delegator = do
+  slot <- getDelegationSlot delegator
+  val <- sload (slot + 1)
+  pure (val == 1)
+
+||| Set delegation record for a delegator
+export
+setDelegation : EvmAddr -> EvmAddr -> Bool -> IO ()
+setDelegation delegator delegatee active = do
+  slot <- getDelegationSlot delegator
+  sstore slot delegatee
+  sstore (slot + 1) (if active then 1 else 0)
+
+||| Get voting power for an address
+export
+getVotingPower : EvmAddr -> IO Integer
+getVotingPower addr = do
+  slot <- getVotingPowerSlot addr
+  sload slot
+
+||| Set voting power for an address
+export
+setVotingPower : EvmAddr -> Integer -> IO ()
+setVotingPower addr power = do
+  slot <- getVotingPowerSlot addr
+  sstore slot power
+
+||| Add voting power to an address (accumulate from delegation)
+export
+addVotingPower : EvmAddr -> Integer -> IO ()
+addVotingPower addr amount = do
+  current <- getVotingPower addr
+  setVotingPower addr (current + amount)
+
+||| Remove voting power from an address (on revocation)
+export
+removeVotingPower : EvmAddr -> Integer -> IO ()
+removeVotingPower addr amount = do
+  current <- getVotingPower addr
+  let newPower = if current >= amount then current - amount else 0
+  setVotingPower addr newPower
+
+||| Delegation schema using Subcontract.Core.Schema
+export
+DelegationSchema : Schema
+DelegationSchema = MkSchema "textdao.delegation" SLOT_DELEGATION
+  [ Mapping "delegateMapping" TAddress TAddress
+  , Mapping "votingPower" TAddress TUint256
+  ]
+
+-- =============================================================================
+-- Representative Storage (Shared by Vote and AccessControl)
+-- =============================================================================
+
+||| Get representative slot by index
+||| Reps are stored in proposal meta at offset 0x40
+export
+getRepSlot : ProposalId -> Integer -> IO Integer
+getRepSlot pid index = do
+  metaSlot <- getProposalMetaSlot pid
+  let repsBaseSlot = metaSlot + 0x40
+  mstore 0 index
+  mstore 32 repsBaseSlot
+  keccak256 0 64
+
+||| Get representative count
+export
+getRepCount : ProposalId -> IO Integer
+getRepCount pid = do
+  metaSlot <- getProposalMetaSlot pid
+  sload (metaSlot + 0x40)
+
+||| Set representative count
+export
+setRepCount : ProposalId -> Integer -> IO ()
+setRepCount pid count = do
+  metaSlot <- getProposalMetaSlot pid
+  sstore (metaSlot + 0x40) count
+
+||| Get representative address by index
+export
+getRepAddr : ProposalId -> Integer -> IO EvmAddr
+getRepAddr pid index = do
+  slot <- getRepSlot pid index
+  sload slot
+
+||| Add representative to proposal
+export
+addRep : ProposalId -> EvmAddr -> IO ()
+addRep pid addr = do
+  count <- getRepCount pid
+  slot <- getRepSlot pid count
+  sstore slot addr
+  setRepCount pid (count + 1)

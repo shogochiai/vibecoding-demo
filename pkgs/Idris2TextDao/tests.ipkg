@@ -1,0 +1,35 @@
+package textdao-tests
+version = "0.1.0"
+authors = "bob"
+brief = "TextDAO test runner"
+
+depends = base, contrib, idris2-subcontract
+
+sourcedir = "src"
+
+modules = TextDAO.Storages.Schema
+        , TextDAO.Security.AccessControl
+        , TextDAO.Security.Reentrancy
+        , TextDAO.Functions.Members.Members
+        , TextDAO.Functions.Members.Members2
+        , TextDAO.Functions.Members.Tests.MembersTest
+        , TextDAO.Functions.Propose.Propose
+        , TextDAO.Functions.Propose.Tests.ProposeTest
+        , TextDAO.Functions.Vote.Vote
+        , TextDAO.Functions.Vote.Tests.VoteTest
+        , TextDAO.Functions.Tally.Tally
+        , TextDAO.Functions.Tally.Tests.TallyTest
+        , TextDAO.Functions.Fork.Fork
+        , TextDAO.Functions.Fork.Tests.ForkTest
+        , TextDAO.Functions.Execute.Execute
+        , TextDAO.Functions.Execute.Tests.ExecuteTest
+        , TextDAO.Functions.Text.Text
+        , TextDAO.Functions.Text.Tests.TextTest
+        , TextDAO.Functions.Cancel.Cancel
+        , TextDAO.Functions.Cancel.Tests.CancelTest
+        , TextDAO.Tests.SchemaTest
+        , TextDAO.Tests.EvmTest
+        , TextDAO.Tests.AllTests
+
+main = TextDAO.Tests.AllTests
+executable = textdao-tests
