@@ -1,0 +1,22 @@
+{
+  "name": "EventTimeline",
+  "address": "0x0000000000000000000000000000000000000000",
+  "network": "base",
+  "chainId": 8453,
+  "selector": "0xdc9cc645",
+  "artifact": "build/EventTimeline.yul",
+  "deployer": "theworld-canister-tecdsa",
+  "deployTx": null,
+  "blockNumber": null,
+  "status": "pending",
+  "erc7546": {
+    "proxySelector": "0xdc9cc645",
+    "implementationType": "view-only"
+  },
+  "verification": {
+    "verified": false,
+    "verifiedAt": null
+  },
+  "createdAt": "2026-04-02",
+  "taskTreeId": "theworld-ip-26"
+}
