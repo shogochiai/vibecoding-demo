@@ -119,6 +119,28 @@ SEL_CANCEL_PROPOSAL : Selector
 SEL_CANCEL_PROPOSAL = 0xd8e780df
 
 -- =============================================================================
+-- Delegation Function Selectors
+-- =============================================================================
+
+||| delegate(address) -> bool
+||| REQ_DELEG_001: bytes4(keccak256("delegate(address)")) = 0x5c19a95c
+export
+SEL_DELEGATE : Selector
+SEL_DELEGATE = 0x5c19a95c
+
+||| revokeDelegation() -> bool
+||| REQ_DELEG_004: bytes4(keccak256("revokeDelegation()")) = 0x7b0a47e8
+export
+SEL_REVOKE_DELEGATION : Selector
+SEL_REVOKE_DELEGATION = 0x7b0a47e8
+
+||| getDelegate(address) -> address
+||| bytes4(keccak256("getDelegate(address)")) = 0xf50741f2
+export
+SEL_GET_DELEGATE : Selector
+SEL_GET_DELEGATE = 0xf50741f2
+
+-- =============================================================================
 -- Route Table Initialization
 -- =============================================================================
 
@@ -136,6 +158,9 @@ governanceSelectors =
   , (SEL_IS_APPROVED,       "isApproved(uint256)")
   , (SEL_TALLY_AND_EXECUTE, "tallyAndExecute(uint256)")
   , (SEL_CANCEL_PROPOSAL,   "cancelProposal(uint256)")
+  , (SEL_DELEGATE,          "delegate(address)")
+  , (SEL_REVOKE_DELEGATION, "revokeDelegation()")
+  , (SEL_GET_DELEGATE,      "getDelegate(address)")
   ]
 
 ||| Register all governance selectors pointing to a single facet address
@@ -153,6 +178,15 @@ registerGovernanceFacet facetAddr = do
   setImplementation SEL_IS_APPROVED        facetAddr
   setImplementation SEL_TALLY_AND_EXECUTE  facetAddr
   setImplementation SEL_CANCEL_PROPOSAL    facetAddr
+
+||| Register delegation selectors pointing to the delegation facet
+||| REQ_DELEG_002: Register in ERC-7546 proxy
+export
+registerDelegationFacet : ImplAddr -> IO ()
+registerDelegationFacet facetAddr = do
+  setImplementation SEL_DELEGATE          facetAddr
+  setImplementation SEL_REVOKE_DELEGATION facetAddr
+  setImplementation SEL_GET_DELEGATE      facetAddr
 
 -- =============================================================================
 -- Proxy Dispatch (Fallback Function)

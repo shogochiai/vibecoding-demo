@@ -14,6 +14,8 @@ modules = Timeline
         , Governance.Cancel
         , Governance.Tally
         , Governance.Selectors
+        , Governance.Delegation
+        , Governance.Delegation.Selectors
         , Governance.Yul.Proposal
         , Governance.Yul.Dispatch
         , ERC7546.Proxy
@@ -21,4 +23,7 @@ modules = Timeline
         , TD.Governance.Proposal
         , TD.Governance.Yul.Cancel
         , TD.Governance.Yul.Tally
+        , TD.Governance.Yul.Delegation
         , TD.Proxy.Router
+        , Deploy.Base
+        , Deploy.Verify

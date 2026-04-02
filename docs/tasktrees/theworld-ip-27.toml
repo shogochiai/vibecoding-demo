@@ -17,13 +17,13 @@ family = "evm"
 id = "ip27-root"
 name = "Vote Delegation — ERC-7546 module implementation"
 estimate = { hours = 18 }
-checkbox = "unchecked"
+checkbox = "checked"
 
 [[root.subtasks]]
 id = "ip27-01"
 name = "REQ_DELEG_001: Delegation storage layout & proxy function table entry"
 estimate = { hours = 3 }
-checkbox = "unchecked"
+checkbox = "checked"
 acceptance = [
   "idris2-yul --codegen yul src/Delegation.idr produces valid Yul: solc --strict-assembly --bin Delegation.yul exits 0",
   "grep -q 'dc9cc645' Delegation.yul  # getImplementation selector present in proxy routing",
@@ -34,7 +34,7 @@ acceptance = [
 id = "ip27-02"
 name = "REQ_DELEG_002: Enforce 1:1 delegation & block re-delegation"
 estimate = { hours = 3 }
-checkbox = "unchecked"
+checkbox = "checked"
 acceptance = [
   "grep -q 'revert.*already.delegated\\|ALREADY_DELEGATED' src/Delegation.idr  # re-delegation guard exists",
   "idris2-yul --typecheck src/Delegation.idr exits 0  # type-level 1:1 constraint compiles",
@@ -45,7 +45,7 @@ acceptance = [
 id = "ip27-03"
 name = "REQ_DELEG_003: Read functions — delegateOf & votingPowerOf"
 estimate = { hours = 3 }
-checkbox = "unchecked"
+checkbox = "checked"
 acceptance = [
   "grep -q 'delegateOf(address)' src/Delegation.idr  # view function defined",
   "grep -q 'votingPowerOf(address)' src/Delegation.idr  # aggregated power query defined",
@@ -56,7 +56,7 @@ acceptance = [
 id = "ip27-04"
 name = "REQ_DELEG_004: Revoke delegation by delegator"
 estimate = { hours = 3 }
-checkbox = "unchecked"
+checkbox = "checked"
 acceptance = [
   "grep -q 'revoke\\|undelegate' src/Delegation.idr  # revoke function exists",
   "grep -q 'caller.*eq.*delegator\\|onlyDelegator' src/Delegation.idr  # auth check on revoke",
@@ -67,7 +67,7 @@ acceptance = [
 id = "ip27-05"
 name = "REQ_DELEG_005: Integrate delegation into Voting module power calculation"
 estimate = { hours = 4 }
-checkbox = "unchecked"
+checkbox = "checked"
 acceptance = [
   "grep -q 'delegatedPower\\|votingPowerOf' src/Voting.idr  # Voting reads delegation state",
   "idris2-yul --typecheck src/Voting.idr exits 0  # integrated module compiles",
@@ -78,7 +78,7 @@ acceptance = [
 id = "ip27-06"
 name = "Deploy delegation module to Base Mainnet via t-ECDSA & verify"
 estimate = { hours = 2 }
-checkbox = "unchecked"
+checkbox = "checked"
 acceptance = [
   "etherclaw deploy --module Delegation --network base-mainnet exits 0  # t-ECDSA signed deploy",
   "etherclaw verify --module Delegation --network base-mainnet exits 0  # IcWasm.Verification passes",
