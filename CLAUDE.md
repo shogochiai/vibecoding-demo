@@ -5,6 +5,35 @@
 - ENS: `td.onthe.eth`
 - Managed by EtherClaw
 
+## Demo Governance Rules
+
+このデモでは以下の制約を設ける：
+
+### 1. ブランチ保護
+- `enforce_admins: true` — 管理者もブランチ保護をバイパスできない
+- 直接pushは禁止、PR必須
+
+### 2. レビュー・投票フロー
+- **Claude自身が** TheWorld canister経由でレビュー作成・投票を実行
+- GitHub UI上の承認ではなく、`etherclaw review approve --pr <N>` を使用
+- マージも手動ではなく、TheWorldガバナンス経由またはGitHub Actionsに委任
+
+### 3. tmux 6-Pane構成
+```
++--------+--------+--------+
+| 0 Flow | 1 Rev  | 2 Col  |
+|   Mon  |  (Cl)  |  (EC)  |
++--------+--------+--------+
+| 3 Rel  | 4 IP   | 5 Aud  |
+|  Prop  |  Prop  |  (Cl)  |
++--------+--------+--------+
+```
+- 各Paneが自律的に役割をこなす
+- Flow Monitor (0) は常時監視
+- Colony (2) はstandalone daemonとして動作
+- IP Proposer (4) が新規IPを提案
+- Reviewer (1) / Auditor (5) はClaudeが担当
+
 ## Init-Time Skills
 
 ### Required Skills

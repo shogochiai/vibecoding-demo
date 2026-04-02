@@ -7,16 +7,16 @@ echo "Setting Branch Protection for $REPO..."
 gh api -X PUT "repos/$REPO/branches/main/protection" --input - <<'EOF'
 {
   "required_status_checks": {"strict": false, "contexts": ["governance-gate"]},
-  "enforce_admins": false,
-  "required_pull_request_reviews": {"required_approving_review_count": 0},
+  "enforce_admins": true,
+  "required_pull_request_reviews": {"required_approving_review_count": 1},
   "restrictions": null,
   "allow_force_pushes": false,
   "allow_deletions": false
 }
 EOF
-echo "Done: PR-only merge, TheWorld governance gate required"
+echo "Done: PR-only merge, TheWorld governance gate required, admin cannot bypass"
 echo ""
-echo "NOTE: enforce_admins=false — Admin can bypass Branch Protection (direct push)."
-echo "  This allows GITHUB_TOKEN (Actions bot) to auto-merge approved PRs."
-echo "  Required status check (governance-gate) still blocks PR merge without approval."
-echo "  Ideal fix: GitHub App with merge-only permission (future)."
+echo "NOTE: enforce_admins=true — Admin CANNOT bypass Branch Protection."
+echo "  Claude (via TheWorld canister) must approve PRs using:"
+echo "    etherclaw review approve --pr <N>"
+echo "  This enforces the demo governance flow where AI agent is the reviewer."
