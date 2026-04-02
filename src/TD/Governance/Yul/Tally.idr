@@ -1,12 +1,14 @@
 ||| TD Governance Tally — Yul Codegen
 ||| REQ_TALLY_001: RCV vote counting and proposal approval
 ||| REQ_CANCEL_002: Cancelled proposals excluded from tally aggregation
+||| REQ_TIMELINE_003: Records Tally and Execute events with timestamps
 module TD.Governance.Yul.Tally
 
 import public Subcontract.Core.Entry
 import Subcontract.Core.ABI.Decoder
 import public Subcontract.Core.Outcome
 import TD.Governance.Proposal
+import TimelineStorage
 
 import Data.List
 
@@ -162,6 +164,7 @@ isProposalExpired pid = do
 
 ||| Perform final tally when proposal expires
 ||| REQ_CANCEL_002: Cancelled proposals are excluded from tally — revert if cancelled
+||| REQ_TIMELINE_003: Records Tally event timestamp on successful tally
 export
 finalTally : ProposalId -> IO (Outcome Bool)
 finalTally pid = do
@@ -182,6 +185,8 @@ finalTally pid = do
       case (topHeaders, topCommands) of
         ([winnerId], [winnerCmd]) => do
           approveProposal pid winnerId winnerCmd
+          -- REQ_TIMELINE_003: Record Tally event timestamp
+          recordEvent pid Tally
           pure (Ok True)
         _ => do
           expiryDuration <- getExpiryDuration
@@ -194,6 +199,7 @@ finalTally pid = do
 -- =============================================================================
 
 ||| Execute the approved command
+||| REQ_TIMELINE_003: Records Execute event timestamp
 executeApproved : ProposalId -> IO Bool
 executeApproved pid = do
   executed <- isFullyExecuted pid
@@ -201,6 +207,8 @@ executeApproved pid = do
     then pure False
     else do
       setFullyExecuted pid True
+      -- REQ_TIMELINE_003: Record Execute event timestamp
+      recordEvent pid Execute
       pure True
 
 ||| Tally and immediately execute if approved

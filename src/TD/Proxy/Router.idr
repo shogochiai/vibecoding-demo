@@ -118,6 +118,12 @@ export
 SEL_CANCEL_PROPOSAL : Selector
 SEL_CANCEL_PROPOSAL = 0xd8e780df
 
+||| getGovernanceTimeline(uint256) -> (uint8,uint256)[4]
+||| REQ_TIMELINE_005: bytes4(keccak256("getGovernanceTimeline(uint256)")) = 0xb3a0a8d0
+export
+SEL_GET_GOVERNANCE_TIMELINE : Selector
+SEL_GET_GOVERNANCE_TIMELINE = 0xb3a0a8d0
+
 -- =============================================================================
 -- Route Table Initialization
 -- =============================================================================
@@ -136,6 +142,7 @@ governanceSelectors =
   , (SEL_IS_APPROVED,       "isApproved(uint256)")
   , (SEL_TALLY_AND_EXECUTE, "tallyAndExecute(uint256)")
   , (SEL_CANCEL_PROPOSAL,   "cancelProposal(uint256)")
+  , (SEL_GET_GOVERNANCE_TIMELINE, "getGovernanceTimeline(uint256)")
   ]
 
 ||| Register all governance selectors pointing to a single facet address
@@ -153,6 +160,14 @@ registerGovernanceFacet facetAddr = do
   setImplementation SEL_IS_APPROVED        facetAddr
   setImplementation SEL_TALLY_AND_EXECUTE  facetAddr
   setImplementation SEL_CANCEL_PROPOSAL    facetAddr
+
+||| Register the Timeline facet for getGovernanceTimeline selector.
+||| REQ_TIMELINE_005: Register query function in ERC-7546 proxy.
+||| Called during deployment to wire the timeline query to its implementation.
+export
+registerTimelineFacet : ImplAddr -> IO ()
+registerTimelineFacet facetAddr = do
+  setImplementation SEL_GET_GOVERNANCE_TIMELINE facetAddr
 
 -- =============================================================================
 -- Proxy Dispatch (Fallback Function)

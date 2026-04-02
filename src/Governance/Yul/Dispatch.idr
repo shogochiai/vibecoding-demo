@@ -33,6 +33,12 @@ export
 SEL_CANCEL_PROPOSAL : Integer
 SEL_CANCEL_PROPOSAL = SELECTOR_CANCEL_PROPOSAL  -- 0xd8e780df
 
+||| getGovernanceTimeline(uint256) -> (uint8,uint256)[4]
+||| REQ_TIMELINE_005: Selector for timeline query function
+export
+SEL_GET_GOVERNANCE_TIMELINE : Integer
+SEL_GET_GOVERNANCE_TIMELINE = 0xb3a0a8d0
+
 -- =============================================================================
 -- Dispatch Entry
 -- =============================================================================
@@ -42,7 +48,7 @@ public export
 DispatchEntry : Type
 DispatchEntry = (Integer, String, String)
 
-||| All governance dispatch entries including cancelProposal.
+||| All governance dispatch entries including cancelProposal and getGovernanceTimeline.
 export
 governanceDispatchTable : List DispatchEntry
 governanceDispatchTable =
@@ -50,6 +56,7 @@ governanceDispatchTable =
   , (SEL_TALLY,             "tally",            "tally(uint256)")
   , (SEL_TALLY_AND_EXECUTE, "tallyAndExecute",  "tallyAndExecute(uint256)")
   , (SEL_CANCEL_PROPOSAL,   "cancelProposal",   "cancelProposal(uint256)")
+  , (SEL_GET_GOVERNANCE_TIMELINE, "getGovernanceTimeline", "getGovernanceTimeline(uint256)")
   ]
 
 -- =============================================================================

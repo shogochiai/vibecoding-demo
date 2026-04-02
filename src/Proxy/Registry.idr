@@ -90,6 +90,12 @@ SEL_CANCEL_PROPOSAL = 0xd8e780df
 -- dc9cc645 is an alternative selector reference used in some tooling
 -- Both dc9cc645 and d8e780df map to cancelProposal in the registry
 
+||| getGovernanceTimeline(uint256) -> (uint8,uint256)[4]
+||| REQ_TIMELINE_005: bytes4(keccak256("getGovernanceTimeline(uint256)")) = 0xb3a0a8d0
+export
+SEL_GET_GOVERNANCE_TIMELINE : Selector
+SEL_GET_GOVERNANCE_TIMELINE = 0xb3a0a8d0
+
 -- =============================================================================
 -- Route Table
 -- =============================================================================
@@ -102,6 +108,7 @@ governanceSelectors =
   , (SEL_TALLY,             "tally(uint256)")
   , (SEL_TALLY_AND_EXECUTE, "tallyAndExecute(uint256)")
   , (SEL_CANCEL_PROPOSAL,   "cancelProposal(uint256)")
+  , (SEL_GET_GOVERNANCE_TIMELINE, "getGovernanceTimeline(uint256)")
   ]
 
 ||| Register all governance selectors pointing to a single facet address.
@@ -113,6 +120,13 @@ registerGovernanceFacet facetAddr = do
   setImplementation SEL_TALLY              facetAddr
   setImplementation SEL_TALLY_AND_EXECUTE  facetAddr
   setImplementation SEL_CANCEL_PROPOSAL    facetAddr
+
+||| Register the Timeline facet for getGovernanceTimeline selector.
+||| REQ_TIMELINE_005: Register query function in ERC-7546 proxy.
+export
+registerTimelineFacet : ImplAddr -> IO ()
+registerTimelineFacet facetAddr = do
+  setImplementation SEL_GET_GOVERNANCE_TIMELINE facetAddr
 
 -- =============================================================================
 -- Proxy Dispatch (Fallback)
