@@ -50,3 +50,30 @@ eventSlot proposalId evt =
 public export
 slotsPerProposal : Integer
 slotsPerProposal = 4
+
+----------------------------------------------------------------------
+-- REQ_TIMELINE_003: Event recording hooks
+----------------------------------------------------------------------
+
+||| Record an event timestamp for a proposal.
+||| Stores block.timestamp at the computed slot for (proposalId, eventType).
+||| Called by propose, vote, tally, and execute functions.
+|||
+||| @proposalId The proposal identifier
+||| @evt The lifecycle event type to record
+export
+recordEvent : Integer -> EventType -> IO ()
+recordEvent proposalId evt = do
+  ts <- timestamp
+  let slot = eventSlot proposalId evt
+  sstore slot ts
+
+||| Check if an event has been recorded (timestamp > 0)
+||| @proposalId The proposal identifier
+||| @evt The lifecycle event type to check
+export
+hasEventRecorded : Integer -> EventType -> IO Bool
+hasEventRecorded proposalId evt = do
+  let slot = eventSlot proposalId evt
+  val <- sload slot
+  pure (val > 0)
